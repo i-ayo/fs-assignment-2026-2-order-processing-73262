@@ -1,0 +1,96 @@
+@inherits LayoutComponentBase
+@inject CartService Cart
+@implements IDisposable
+
+<nav class="ap-nav">
+    <a class="ap-brand" href="/">🏅 SportsStore</a>
+    <div class="ap-nav-links">
+        <a href="/"          class="ap-navlink">Shop</a>
+        <a href="/my-orders" class="ap-navlink">My Orders</a>
+    </div>
+    <a href="/cart" class="ap-cart-icon" title="@(Cart.TotalQuantity == 0 ? "Cart (empty)" : $"Cart ({Cart.TotalQuantity} item{(Cart.TotalQuantity == 1 ? "" : "s")})")">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+        @if (Cart.TotalQuantity > 0)
+        {
+            <span class="ap-cart-badge">@(Cart.TotalQuantity > 99 ? "99+" : Cart.TotalQuantity.ToString())</span>
+        }
+    </a>
+</nav>
+
+<main class="ap-main">
+    @Body
+</main>
+
+<style>
+    .ap-nav {
+        position: sticky; top: 0; z-index: 200;
+        display: flex; align-items: center; gap: 20px;
+        height: 60px; padding: 0 28px;
+        background: rgba(255,255,255,0.88);
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        border-bottom: 1px solid rgba(0,0,0,.08);
+    }
+    .ap-brand {
+        font-size: 18px; font-weight: 700;
+        color: #1C1C1E; text-decoration: none; letter-spacing: -.02em;
+        margin-right: 8px;
+    }
+    .ap-brand:hover { color: #007AFF; }
+    .ap-nav-links { display: flex; gap: 4px; flex: 1; }
+    .ap-navlink {
+        padding: 6px 14px; border-radius: 8px;
+        font-size: 15px; font-weight: 500; color: #1C1C1E;
+        text-decoration: none; transition: background .15s;
+    }
+    .ap-navlink:hover { background: #F2F2F7; color: #007AFF; }
+
+    /* ── Apple-style cart icon ─────────────────────────────────────────── */
+    .ap-cart-icon {
+        position: relative;
+        display: flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px;
+        border-radius: 12px;
+        color: #1C1C1E;
+        text-decoration: none;
+        transition: background .15s, color .15s;
+    }
+    .ap-cart-icon:hover { background: #F2F2F7; color: #007AFF; }
+    .ap-cart-icon svg { pointer-events: none; }
+    .ap-cart-badge {
+        position: absolute; top: 2px; right: 2px;
+        background: #FF3B30; color: #fff;
+        border-radius: 10px; min-width: 18px; height: 18px;
+        padding: 0 4px;
+        font-size: 10px; font-weight: 800; line-height: 18px;
+        text-align: center;
+        border: 2px solid #fff;
+        box-shadow: 0 1px 4px rgba(255,59,48,.4);
+        animation: badge-pop .2s cubic-bezier(.36,.07,.19,.97);
+    }
+    @@keyframes badge-pop {
+        0%  { transform: scale(0.5); }
+        70% { transform: scale(1.15); }
+        100% { transform: scale(1); }
+    }
+    .ap-main {
+        max-width: 1200px; margin: 0 auto; padding: 32px 24px;
+    }
+</style>
+
+@code {
+    protected override void OnInitialized()
+        => Cart.StateChanged += OnCartChanged;
+
+    private void OnCartChanged()
+        => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+        => Cart.StateChanged -= OnCartChanged;
+}

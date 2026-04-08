@@ -1,0 +1,106 @@
+@page "/order-confirmation/{OrderId:guid}"
+@inject OrderApiService Api
+@inject ILogger<OrderConfirmation> Logger
+
+<div style="max-width:560px;margin:0 auto;padding:32px 20px;">
+
+@if (_loading)
+{
+    <div class="loading-state">Loading your order…</div>
+}
+else if (_order is null)
+{
+    <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-title">Order not found</div>
+        <p class="empty-msg">We couldn't load the details for this order.</p>
+        <a href="/my-orders" class="btn btn-primary">Go to My Orders</a>
+    </div>
+}
+else
+{
+    <div class="confirmation-card">
+        <div class="confirmation-icon">✅</div>
+        <h1 style="text-align:center;margin-bottom:24px;">Order Placed!</h1>
+
+        <div class="card">
+            <div class="card-header" style="background:var(--apple-green);color:#fff;border-radius:12px 12px 0 0;">
+                Thank you, @_order.CustomerName!
+            </div>
+            <div class="card-body">
+                <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                    <tr>
+                        <td style="padding:9px 0;color:var(--apple-gray);font-weight:600;width:38%;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Order ID</td>
+                        <td style="padding:9px 0;font-family:'SF Mono',monospace;font-size:12px;word-break:break-all;">@_order.Id</td>
+                    </tr>
+                    <tr style="border-top:1px solid var(--apple-gray6);">
+                        <td style="padding:9px 0;color:var(--apple-gray);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Customer ID</td>
+                        <td style="padding:9px 0;">
+                            <span style="font-family:'SF Mono',monospace;font-size:13px;background:#F2F2F7;padding:3px 8px;border-radius:6px;font-weight:700;">
+                                @_order.CustomerId
+                            </span>
+                            <span style="font-size:11px;color:#8E8E93;margin-left:8px;">Use this to look up your order in My Orders.</span>
+                        </td>
+                    </tr>
+                    <tr style="border-top:1px solid var(--apple-gray6);">
+                        <td style="padding:9px 0;color:var(--apple-gray);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Status</td>
+                        <td style="padding:9px 0;">
+                            <span class="status-badge @StatusClass(_order.Status)">@_order.Status</span>
+                        </td>
+                    </tr>
+                    <tr style="border-top:1px solid var(--apple-gray6);">
+                        <td style="padding:9px 0;color:var(--apple-gray);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Total</td>
+                        <td style="padding:9px 0;font-weight:700;font-size:16px;">@_order.TotalAmount.ToString("C")</td>
+                    </tr>
+                    @if (!string.IsNullOrEmpty(_order.TrackingNumber))
+                    {
+                        <tr style="border-top:1px solid var(--apple-gray6);">
+                            <td style="padding:9px 0;color:var(--apple-gray);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Tracking</td>
+                            <td style="padding:9px 0;font-family:'SF Mono',monospace;font-size:13px;">@_order.TrackingNumber</td>
+                        </tr>
+                    }
+                    @if (!string.IsNullOrEmpty(_order.FailureReason))
+                    {
+                        <tr style="border-top:1px solid var(--apple-gray6);">
+                            <td style="padding:9px 0;color:var(--apple-gray);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Reason</td>
+                            <td style="padding:9px 0;color:var(--apple-red);font-size:13px;">@_order.FailureReason</td>
+                        </tr>
+                    }
+                </table>
+            </div>
+            <div class="card-footer" style="display:flex;gap:12px;flex-wrap:wrap;">
+                <a href="/my-orders" class="btn btn-primary">View My Orders</a>
+                <a href="/"          class="btn btn-secondary">Continue Shopping</a>
+            </div>
+        </div>
+    </div>
+}
+
+</div>
+
+@code {
+    [Parameter] public Guid OrderId { get; set; }
+
+    private OrderResponse? _order;
+    private bool           _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation(
+            "OrderConfirmation loading for OrderId {OrderId}", OrderId);
+
+        // Direct lookup via GET /api/orders/{id} — no broken HttpClient hack
+        _order   = await Api.GetOrderByIdAsync(OrderId);
+        _loading = false;
+    }
+
+    private static string StatusClass(Shared.Domain.Enums.OrderStatus s) => s switch
+    {
+        Shared.Domain.Enums.OrderStatus.Submitted                                     => "badge-submitted",
+        Shared.Domain.Enums.OrderStatus.Completed                                     => "badge-completed",
+        Shared.Domain.Enums.OrderStatus.Failed or
+        Shared.Domain.Enums.OrderStatus.PaymentFailed or
+        Shared.Domain.Enums.OrderStatus.InventoryFailed                               => "badge-failed",
+        _                                                                               => "badge-progress"
+    };
+}

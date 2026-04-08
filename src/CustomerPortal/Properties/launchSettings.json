@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "CustomerPortal": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Production"
+      },
+      "applicationUrl": "https://localhost:60869;http://localhost:60872"
+    }
+  }
+}

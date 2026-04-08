@@ -1,0 +1,502 @@
+@page "/"
+@inject OrderApiService Api
+@inject CartService Cart
+@inject ILogger<Products> Logger
+
+@* ══════════════════════════════════════════════════════════════════════════
+   HERO BANNER
+   ══════════════════════════════════════════════════════════════════════════ *@
+<div class="hero-banner">
+    <div class="hero-content">
+        <div class="hero-badge">🏅 Sports Store</div>
+        <h1 class="hero-title">Gear Up for <span class="hero-accent">Greatness</span></h1>
+        <p class="hero-subtitle">Top-quality sports equipment, from watersports to chess. Free shipping on orders over $50.</p>
+        <div class="hero-cta">
+            <button class="hero-btn" @onclick='() => SetCategory("all")'>Shop All Products</button>
+            <span class="hero-divider">·</span>
+            <span class="hero-note">@_products.Count products available</span>
+        </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+        <span class="hero-emoji">⚽</span>
+        <span class="hero-emoji hero-emoji--sm">🚣</span>
+        <span class="hero-emoji hero-emoji--xs">♟️</span>
+    </div>
+</div>
+
+@* ══════════════════════════════════════════════════════════════════════════
+   SHOP HEADER — category filter bar
+   ══════════════════════════════════════════════════════════════════════════ *@
+<div class="shop-header">
+    <div class="cat-pills">
+        @foreach (var cat in _categories)
+        {
+            <button class="cat-pill @(cat.Key == _activeCategory ? "cat-pill--active" : "")"
+                    @onclick="() => SetCategory(cat.Key)">
+                @cat.Label
+            </button>
+        }
+    </div>
+</div>
+
+@* ══════════════════════════════════════════════════════════════════════════
+   SHOP CONTENT
+   ══════════════════════════════════════════════════════════════════════════ *@
+<div class="shop-body">
+
+    @* ── Search + Sort bar ─────────────────────────────────────────────── *@
+    <div class="search-sort-bar">
+        <div class="search-wrap">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input class="search-input" type="search" placeholder="Search products…"
+                   @bind="_searchQuery" @bind:event="oninput" />
+        </div>
+        <select class="sort-select" @bind="_sortBy">
+            <option value="name-az">Name: A → Z</option>
+            <option value="name-za">Name: Z → A</option>
+            <option value="price-asc">Price: Low → High</option>
+            <option value="price-desc">Price: High → Low</option>
+            <option value="stock-asc">Stock: Low → High</option>
+            <option value="stock-desc">Stock: High → Low</option>
+        </select>
+        @if (DisplayProducts.Count != _products.Count || !string.IsNullOrEmpty(_searchQuery))
+        {
+            <span class="result-count">@DisplayProducts.Count result@(DisplayProducts.Count == 1 ? "" : "s")</span>
+        }
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state">
+            <span class="loading-spinner"></span>
+            Loading products…
+        </div>
+    }
+    else if (!DisplayProducts.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <div class="empty-title">No products found</div>
+            @if (!string.IsNullOrEmpty(_searchQuery))
+            {
+                <p class="empty-sub">No results for "<strong>@_searchQuery</strong>"</p>
+                <button class="pill-btn" @onclick='() => _searchQuery = string.Empty'>Clear search</button>
+            }
+            else
+            {
+                <p class="empty-sub">No items in this category yet.</p>
+                <button class="pill-btn" @onclick='() => SetCategory("all")'>View all products</button>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="product-grid">
+            @foreach (var p in DisplayProducts)
+            {
+                var stock = _stockMap.TryGetValue(p.ProductId, out var s) ? s : 99;
+                var catEmoji = CategoryEmoji(p.ProductId);
+                <div class="product-card">
+                    <div class="product-card-body">
+                        <div class="product-emoji-row">
+                            <span class="product-cat-emoji">@catEmoji</span>
+                        </div>
+                        <div class="product-name">@p.Name</div>
+                        <div class="product-desc">@p.Description</div>
+                        <div class="product-price">@p.Price.ToString("C")</div>
+
+                        @* ── Stock status ────────────────────────────── *@
+                        @if (stock == 0)
+                        {
+                            <div class="stock-tag stock-tag--out">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                     stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                                </svg>
+                                Out of stock
+                            </div>
+                        }
+                        else if (stock <= 5)
+                        {
+                            <div class="stock-tag stock-tag--low">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                     stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                                Only @stock left!
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="stock-tag stock-tag--ok">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                     stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                In stock
+                            </div>
+                        }
+                    </div>
+                    <div class="product-card-footer">
+                        @if (stock == 0)
+                        {
+                            <button class="btn-cart btn-cart--disabled" disabled>
+                                Unavailable
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn-cart" @onclick="() => AddToCart(p)">
+                                Add to Cart
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="ap-banner ap-banner-success">
+            <span>@_message</span>
+            <button class="ap-banner-close" @onclick="() => _message = null">✕</button>
+        </div>
+    }
+
+</div>
+
+<style>
+    /* ── Hero banner ─────────────────────────────────────────────────────── */
+    .hero-banner {
+        display: flex; align-items: center; justify-content: space-between;
+        background: linear-gradient(135deg, #1C1C1E 0%, #3a3a5c 60%, #6366f1 100%);
+        border-radius: 20px; padding: 40px 48px;
+        margin-bottom: 32px; overflow: hidden; position: relative;
+        min-height: 180px;
+    }
+    .hero-content { flex: 1; min-width: 0; }
+    .hero-badge {
+        display: inline-block; background: rgba(255,255,255,.12);
+        color: #e0e0ff; font-size: 12px; font-weight: 700;
+        letter-spacing: .08em; text-transform: uppercase;
+        padding: 5px 14px; border-radius: 100px; margin-bottom: 14px;
+    }
+    .hero-title {
+        font-size: 36px; font-weight: 900; color: #fff;
+        letter-spacing: -.03em; margin: 0 0 10px; line-height: 1.1;
+    }
+    .hero-accent { color: #a5b4fc; }
+    .hero-subtitle {
+        font-size: 15px; color: rgba(255,255,255,.72);
+        margin: 0 0 20px; max-width: 480px; line-height: 1.55;
+    }
+    .hero-cta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .hero-btn {
+        padding: 11px 26px; border-radius: 100px; border: none;
+        background: #6366f1; color: #fff;
+        font-size: 14px; font-weight: 700; cursor: pointer;
+        transition: background .15s, transform .1s;
+        box-shadow: 0 4px 16px rgba(99,102,241,.45);
+    }
+    .hero-btn:hover  { background: #818cf8; }
+    .hero-btn:active { transform: scale(.97); }
+    .hero-divider { color: rgba(255,255,255,.3); font-size: 18px; }
+    .hero-note { font-size: 13px; color: rgba(255,255,255,.5); font-weight: 500; }
+    .hero-visual {
+        display: flex; align-items: flex-end; gap: 6px;
+        flex-shrink: 0; padding-left: 24px;
+        pointer-events: none; user-select: none;
+    }
+    .hero-emoji        { font-size: 72px; line-height: 1; filter: drop-shadow(0 4px 12px rgba(0,0,0,.3)); }
+    .hero-emoji--sm    { font-size: 48px; margin-bottom: 8px; }
+    .hero-emoji--xs    { font-size: 36px; margin-bottom: 4px; opacity: .75; }
+
+    /* ── Shop header ─────────────────────────────────────────────────────── */
+    .shop-header {
+        display: flex; flex-wrap: wrap; align-items: center;
+        gap: 16px; margin-bottom: 24px;
+    }
+
+    /* ── Category pills ───────────────────────────────────────────────────── */
+    .cat-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cat-pill {
+        padding: 7px 18px; border-radius: 100px;
+        border: 1.5px solid #D1D1D6;
+        background: #fff;
+        color: #3A3A3C;
+        font-size: 13px; font-weight: 500; cursor: pointer;
+        transition: background .15s, border-color .15s, color .15s;
+    }
+    .cat-pill:hover {
+        background: #F2F2F7;
+        border-color: #C7C7CC;
+    }
+    .cat-pill--active {
+        background: #6366f1 !important;
+        border-color: #6366f1 !important;
+        color: #fff !important;
+    }
+
+    /* ── Shop body ────────────────────────────────────────────────────────── */
+    .shop-body { padding-top: 0; }
+
+    /* ── Search + Sort bar ────────────────────────────────────────────────── */
+    .search-sort-bar {
+        display: flex; gap: 12px; align-items: center;
+        flex-wrap: wrap; margin-bottom: 24px;
+    }
+    .search-wrap {
+        position: relative; flex: 1; min-width: 200px; max-width: 360px;
+    }
+    .search-icon {
+        position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+        color: #8E8E93; pointer-events: none;
+    }
+    .search-input {
+        width: 100%; padding: 9px 14px 9px 36px;
+        border: 1.5px solid #D1D1D6; border-radius: 10px;
+        font-size: 14px; outline: none; color: #1C1C1E;
+        background: #fff; transition: border-color .15s, box-shadow .15s;
+        box-sizing: border-box;
+    }
+    .search-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+    .sort-select {
+        padding: 9px 14px; border: 1.5px solid #D1D1D6; border-radius: 10px;
+        font-size: 14px; color: #1C1C1E; background: #fff; cursor: pointer;
+        outline: none; transition: border-color .15s;
+    }
+    .sort-select:focus { border-color: #6366f1; }
+    .result-count {
+        font-size: 13px; color: #8E8E93; font-weight: 500; white-space: nowrap;
+    }
+
+    /* ── Loading ──────────────────────────────────────────────────────────── */
+    .loading-state {
+        display: flex; align-items: center; gap: 12px;
+        padding: 48px 0; color: #8E8E93; font-size: 15px;
+    }
+    .loading-spinner {
+        width: 20px; height: 20px; border-radius: 50%;
+        border: 2.5px solid #E5E5EA;
+        border-top-color: #6366f1;
+        animation: spin .7s linear infinite;
+    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Empty state ──────────────────────────────────────────────────────── */
+    .empty-state { text-align: center; padding: 64px 0; }
+    .empty-icon  { font-size: 48px; margin-bottom: 16px; }
+    .empty-title { font-size: 20px; font-weight: 700; color: #1C1C1E; margin-bottom: 8px; }
+    .empty-sub   { color: #8E8E93; margin-bottom: 20px; }
+    .pill-btn {
+        padding: 10px 24px; border-radius: 100px; border: none;
+        background: #6366f1; color: #fff;
+        font-size: 14px; font-weight: 600; cursor: pointer;
+        transition: background .15s;
+    }
+    .pill-btn:hover { background: #4f52d6; }
+
+    /* ── Product grid ─────────────────────────────────────────────────────── */
+    .product-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 20px;
+    }
+    .product-card {
+        background: #fff; border-radius: 16px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+        display: flex; flex-direction: column; overflow: hidden;
+        transition: box-shadow .18s, transform .18s;
+    }
+    .product-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,.10), 0 12px 40px rgba(0,0,0,.08);
+        transform: translateY(-3px);
+    }
+    .product-card-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .product-emoji-row { margin-bottom: 4px; }
+    .product-cat-emoji { font-size: 28px; line-height: 1; }
+    .product-name  { font-size: 16px; font-weight: 700; color: #1C1C1E; }
+    .product-desc  { font-size: 13px; color: #8E8E93; flex: 1; line-height: 1.45; }
+    .product-price { font-size: 22px; font-weight: 800; color: #1C1C1E; margin-top: 6px; letter-spacing: -.02em; }
+    .product-card-footer { padding: 0 20px 20px; }
+
+    /* ── Stock tags ───────────────────────────────────────────────────────── */
+    .stock-tag {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 11.5px; font-weight: 600;
+        padding: 4px 11px; border-radius: 100px;
+        margin-bottom: 10px;
+    }
+    .stock-tag--ok {
+        background: #ECFDF5; color: #065F46;
+        border: 1px solid #A7F3D0;
+    }
+    .stock-tag--low {
+        background: #FFFBEB; color: #B45309;
+        border: 1px solid #FDE68A;
+    }
+    .stock-tag--out {
+        background: #FFF1F2; color: #BE123C;
+        border: 1px solid #FECDD3;
+        text-decoration: none;
+        opacity: .85;
+    }
+
+    /* ── Add to Cart button ───────────────────────────────────────────────── */
+    .btn-cart {
+        width: 100%; padding: 11px;
+        border: none; border-radius: 100px;
+        background: #1C1C1E; color: #fff;
+        font-size: 14px; font-weight: 600;
+        cursor: pointer; transition: background .15s, transform .1s;
+    }
+    .btn-cart:hover  { background: #3a3a3c; }
+    .btn-cart:active { transform: scale(.98); }
+    .btn-cart--disabled {
+        width: 100%; padding: 11px;
+        border: 1.5px dashed #D1D1D6; border-radius: 100px;
+        background: transparent; color: #C7C7CC;
+        font-size: 14px; font-weight: 500; cursor: not-allowed;
+    }
+
+    /* ── Success banner ───────────────────────────────────────────────────── */
+    .ap-banner {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 20px; border-radius: 12px;
+        font-size: 14px; font-weight: 500; margin-top: 20px;
+    }
+    .ap-banner-success { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+    .ap-banner-close {
+        background: none; border: none; cursor: pointer;
+        font-size: 16px; color: inherit; padding: 0 4px;
+    }
+</style>
+
+@code {
+    private record Product(long ProductId, string Name, string Description, decimal Price);
+
+    // ── Category definitions ────────────────────────────────────────────────
+    private record CategoryDef(string Key, string Label);
+    private static readonly List<CategoryDef> _categories =
+    [
+        new("all",        "✦ All"),
+        new("soccer",     "⚽ Soccer"),
+        new("chess",      "♟️ Chess"),
+        new("watersport", "🚣 Watersports"),
+        new("gear",       "🎯 Gear"),
+    ];
+
+    // ── Category assignments ────────────────────────────────────────────────
+    private static readonly Dictionary<long, string> _productCategories = new()
+    {
+        { 1,  "watersport" }, // Kayak
+        { 2,  "watersport" }, // Lifejacket
+        { 3,  "soccer"     }, // Soccer Ball
+        { 4,  "soccer"     }, // Corner Flags
+        { 5,  "soccer"     }, // Stadium
+        { 6,  "gear"       }, // Thinking Cap
+        { 7,  "gear"       }, // Unsteady Chair
+        { 8,  "chess"      }, // Human Chess Board
+        { 9,  "chess"      }, // Bling-Bling King
+        { 10, "soccer"     }, // Whistle
+    };
+
+    private static readonly Dictionary<string, string> _categoryEmojis = new()
+    {
+        { "soccer",     "⚽" },
+        { "chess",      "♟️" },
+        { "watersport", "🚣" },
+        { "gear",       "🎯" },
+    };
+
+    private static string CategoryEmoji(long productId)
+        => _productCategories.TryGetValue(productId, out var cat)
+            && _categoryEmojis.TryGetValue(cat, out var emoji)
+            ? emoji : "🏅";
+
+    // ── Products ────────────────────────────────────────────────────────────
+    private readonly List<Product> _products =
+    [
+        new(1,  "Kayak",             "A boat for one person",               275.00m),
+        new(2,  "Lifejacket",        "Protective and fashionable",           48.95m),
+        new(3,  "Soccer Ball",       "FIFA-approved size and weight",        19.50m),
+        new(4,  "Corner Flags",      "Give your pitch a professional look",  34.95m),
+        new(5,  "Stadium",           "Flat-packed 35,000-seat stadium",  79500.00m),
+        new(6,  "Thinking Cap",      "Improve brain efficiency by 75%",      16.00m),
+        new(7,  "Unsteady Chair",    "Secretly defective furniture",         29.95m),
+        new(8,  "Human Chess Board", "A fun game for the family",            75.00m),
+        new(9,  "Bling-Bling King",  "Gold-plated, diamond-studded King",  1200.00m),
+        new(10, "Whistle",           "Referee-grade stainless steel",        12.50m),
+    ];
+
+    private readonly Dictionary<long, int> _stockMap = new();
+    private bool    _loading         = true;
+    private string? _message;
+    private string  _searchQuery     = string.Empty;
+    private string  _sortBy          = "name-az";
+    private string  _activeCategory  = "all";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("Products page loading");
+        foreach (var p in _products)
+            _stockMap[p.ProductId] = await Api.GetStockAsync(p.ProductId);
+        _loading = false;
+    }
+
+    private void SetCategory(string key)
+    {
+        _activeCategory = key;
+        _searchQuery    = string.Empty;
+    }
+
+    /// <summary>Client-side filtered + sorted product list.</summary>
+    private List<Product> DisplayProducts
+    {
+        get
+        {
+            // 1. Category filter
+            IEnumerable<Product> result = _activeCategory == "all"
+                ? _products
+                : _products.Where(p =>
+                    _productCategories.TryGetValue(p.ProductId, out var c) && c == _activeCategory);
+
+            // 2. Search filter
+            var q = _searchQuery.Trim();
+            if (!string.IsNullOrEmpty(q))
+                result = result.Where(p =>
+                    p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    p.Description.Contains(q, StringComparison.OrdinalIgnoreCase));
+
+            // 3. Sort
+            return _sortBy switch
+            {
+                "name-za"    => result.OrderByDescending(p => p.Name).ToList(),
+                "price-asc"  => result.OrderBy(p => p.Price).ToList(),
+                "price-desc" => result.OrderByDescending(p => p.Price).ToList(),
+                "stock-asc"  => result.OrderBy(p => _stockMap.GetValueOrDefault(p.ProductId, 99)).ToList(),
+                "stock-desc" => result.OrderByDescending(p => _stockMap.GetValueOrDefault(p.ProductId, 99)).ToList(),
+                _            => result.OrderBy(p => p.Name).ToList()
+            };
+        }
+    }
+
+    private void AddToCart(Product p)
+    {
+        Cart.AddItem(p.ProductId, p.Name, p.Price);
+        _message = $"✓  {p.Name} added to cart!";
+        Logger.LogInformation(
+            "Item added to cart: {ProductName} (id {ProductId}), cart now {Total} item(s)",
+            p.Name, p.ProductId, Cart.TotalQuantity);
+    }
+}

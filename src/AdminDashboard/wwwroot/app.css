@@ -1,0 +1,268 @@
+/* ── Apple-inspired design system ──────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --apple-blue:      #007AFF;
+  --apple-green:     #34C759;
+  --apple-red:       #FF3B30;
+  --apple-orange:    #FF9500;
+  --apple-purple:    #AF52DE;
+  --apple-pink:      #FF2D55;
+  --apple-yellow:    #FFCC00;
+  --apple-gray:      #8E8E93;
+  --apple-gray2:     #AEAEB2;
+  --apple-gray6:     #F2F2F7;
+  --apple-label:     #1C1C1E;
+  --apple-label2:    #3A3A3C;
+  --apple-separator: #C6C6C8;
+  --sidebar-width:   240px;
+  --radius:          12px;
+  --shadow-sm:       0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:       0 4px 16px rgba(0,0,0,.10);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+               "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  background: var(--apple-gray6);
+  color: var(--apple-label);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── App shell ────────────────────────────────────────────────────────── */
+.app-shell { display: flex; min-height: 100vh; }
+
+/* ── Sidebar ──────────────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-width);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-right: 1px solid var(--apple-separator);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+  padding: 24px 0;
+}
+
+.sidebar-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 20px 24px;
+  border-bottom: 1px solid var(--apple-separator);
+  margin-bottom: 12px;
+  gap: 2px;
+}
+
+.brand-icon { font-size: 32px; }
+.brand-name { font-size: 17px; font-weight: 600; color: var(--apple-label); }
+.brand-sub  { font-size: 12px; font-weight: 500; color: var(--apple-gray);
+               text-transform: uppercase; letter-spacing: .06em; }
+
+.sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 12px; }
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--apple-label);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background .15s;
+}
+.nav-link:hover  { background: var(--apple-gray6); }
+.nav-link.active { background: var(--apple-blue); color: #fff; }
+.nav-icon { font-size: 10px; opacity: .4; }
+
+/* ── Main content ─────────────────────────────────────────────────────── */
+.main-content {
+  margin-left: var(--sidebar-width);
+  flex: 1;
+  padding: 32px 36px;
+  min-height: 100vh;
+}
+
+/* ── Page header ──────────────────────────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+.page-title   { font-size: 28px; font-weight: 700; letter-spacing: -.4px; }
+.last-refresh { font-size: 12px; color: var(--apple-gray); }
+
+/* ── Metric cards ─────────────────────────────────────────────────────── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.metric-card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  border-top: 4px solid var(--apple-gray2);
+  transition: box-shadow .2s;
+}
+.metric-card:hover         { box-shadow: var(--shadow-md); }
+.metric-card.accent-green  { border-top-color: var(--apple-green); }
+.metric-card.accent-blue   { border-top-color: var(--apple-blue); }
+.metric-card.accent-red    { border-top-color: var(--apple-red); }
+.metric-card.accent-purple { border-top-color: var(--apple-purple); }
+
+.metric-label { font-size: 12px; font-weight: 600; color: var(--apple-gray);
+                text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+.metric-value { font-size: 28px; font-weight: 700; letter-spacing: -.5px; }
+.metric-sub   { font-size: 11px; color: var(--apple-gray); margin-top: 4px; }
+
+/* ── Filter bar ───────────────────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-label { font-size: 11px; font-weight: 600; color: var(--apple-gray);
+                text-transform: uppercase; letter-spacing: .05em; }
+
+.apple-input,
+.apple-select {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--apple-separator);
+  border-radius: 8px;
+  background: var(--apple-gray6);
+  color: var(--apple-label);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border .15s, box-shadow .15s;
+  min-width: 180px;
+}
+.apple-input:focus,
+.apple-select:focus {
+  border-color: var(--apple-blue);
+  box-shadow: 0 0 0 3px rgba(0,122,255,.15);
+  background: #fff;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.btn-apple {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.btn-apple:hover  { opacity: .88; }
+.btn-apple:active { opacity: .76; }
+.btn-primary   { background: var(--apple-blue);  color: #fff; }
+.btn-secondary { background: var(--apple-gray6); color: var(--apple-label);
+                 border: 1px solid var(--apple-separator); }
+.btn-ghost     { background: transparent; color: var(--apple-gray);
+                 border: 1px solid var(--apple-separator); }
+
+/* ── Table card ───────────────────────────────────────────────────────── */
+.table-card {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.apple-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+.apple-table thead th {
+  padding: 12px 16px;
+  background: var(--apple-gray6);
+  color: var(--apple-gray);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  text-align: left;
+  border-bottom: 1px solid var(--apple-separator);
+  white-space: nowrap;
+}
+.apple-table thead th.sortable         { cursor: pointer; user-select: none; }
+.apple-table thead th.sortable:hover   { color: var(--apple-blue); }
+.apple-table tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--apple-gray6);
+  vertical-align: middle;
+}
+.apple-table tbody tr:last-child td { border-bottom: none; }
+.apple-table tbody tr:hover         { background: rgba(0,122,255,.03); }
+
+.row-failed td    { background: rgba(255,59,48,.04); }
+.row-completed td { background: rgba(52,199,89,.03); }
+.sort-icon        { font-size: 10px; opacity: .5; }
+
+.mono-sm     { font-family: "SF Mono","Menlo",monospace; font-size: 11px;
+               color: var(--apple-gray); }
+.date-cell   { color: var(--apple-label2); font-size: 12px; }
+.amount-cell { font-weight: 600; }
+
+.customer-cell { display: flex; flex-direction: column; gap: 1px; }
+.customer-name { font-weight: 600; }
+.customer-id   { font-size: 11px; color: var(--apple-gray); }
+
+/* ── Status badges ────────────────────────────────────────────────────── */
+/* Blue=Submitted | Pink=Inventory/Payment | Yellow=Shipping/Completed | Gray=Failed */
+.status-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-blue   { background: rgba(0,122,255,.12);   color: #0056cc; }
+.badge-pink   { background: rgba(255,45,85,.12);   color: #cc0030; }
+.badge-yellow { background: rgba(255,204,0,.20);   color: #a37800; }
+.badge-gray   { background: rgba(142,142,147,.15); color: #636366; }
+
+/* ── Table footer ─────────────────────────────────────────────────────── */
+.table-footer {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--apple-gray);
+  background: var(--apple-gray6);
+  border-top: 1px solid var(--apple-separator);
+}
+.revenue-summary { font-weight: 600; color: var(--apple-green); }
+.revenue-note    { font-weight: 400; color: var(--apple-gray); }
+
+/* ── Empty / loading states ───────────────────────────────────────────── */
+.empty-state  { text-align: center; padding: 60px 20px; color: var(--apple-gray); }
+.empty-icon   { font-size: 48px; margin-bottom: 16px; }
+.loading-card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 32px;
+  text-align: center;
+  color: var(--apple-gray);
+  box-shadow: var(--shadow-sm);
+}

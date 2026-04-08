@@ -1,0 +1,76 @@
+@page "/"
+@inject AdminApiService Api
+@inject ILogger<Dashboard> Logger
+@implements IAsyncDisposable
+
+<PageTitle>Dashboard — SportsStore Admin</PageTitle>
+
+<div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+    <span class="last-refresh">Refreshed @_lastRefresh.ToString("HH:mm:ss")</span>
+</div>
+
+@if (_stats is null)
+{
+    <div class="loading-card">Loading metrics…</div>
+}
+else
+{
+    <!-- ── Metric cards ── -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-label">Total Orders</div>
+            <div class="metric-value">@_stats.TotalOrders</div>
+        </div>
+        <div class="metric-card accent-green">
+            <div class="metric-label">Revenue (All Time)</div>
+            <div class="metric-value">@_stats.TotalRevenue.ToString("C")</div>
+            <div class="metric-sub">Completed orders only</div>
+        </div>
+        <div class="metric-card accent-blue">
+            <div class="metric-label">Revenue This Week</div>
+            <div class="metric-value">@_stats.RevenueThisWeek.ToString("C")</div>
+        </div>
+        <div class="metric-card accent-purple">
+            <div class="metric-label">Revenue This Month</div>
+            <div class="metric-value">@_stats.RevenueThisMonth.ToString("C")</div>
+        </div>
+        <div class="metric-card accent-green">
+            <div class="metric-label">Completed</div>
+            <div class="metric-value">@_stats.CompletedOrders</div>
+        </div>
+        <div class="metric-card accent-red">
+            <div class="metric-label">Failed</div>
+            <div class="metric-value">@_stats.FailedOrders</div>
+        </div>
+    </div>
+}
+
+@code {
+    private AdminStats? _stats;
+    private DateTime    _lastRefresh = DateTime.Now;
+    private Timer?      _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        // Auto-refresh every 10 seconds
+        _timer = new Timer(async _ =>
+        {
+            await RefreshAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private async Task RefreshAsync()
+    {
+        _stats       = await Api.GetStatsAsync();
+        _lastRefresh = DateTime.Now;
+        Logger.LogInformation("Dashboard stats refreshed at {Time}", _lastRefresh);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_timer is not null) await _timer.DisposeAsync();
+    }
+}
