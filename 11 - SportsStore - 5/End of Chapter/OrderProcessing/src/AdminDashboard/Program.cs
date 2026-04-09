@@ -1,6 +1,7 @@
 using AdminDashboard.Services;
 using Serilog;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((ctx, lc) => lc
@@ -12,6 +13,9 @@ builder.Host.UseSerilog((ctx, lc) => lc
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Scoped = one instance per Blazor circuit (i.e. per browser session)
+builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddHttpClient<AdminApiService>(c =>
     c.BaseAddress = new Uri(

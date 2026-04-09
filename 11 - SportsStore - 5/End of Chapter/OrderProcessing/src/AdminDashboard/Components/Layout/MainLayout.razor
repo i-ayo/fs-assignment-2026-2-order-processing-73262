@@ -1,22 +1,62 @@
 @inherits LayoutComponentBase
+@inject AuthService Auth
+@inject NavigationManager Nav
 
-<div class="app-shell">
-    <aside class="sidebar">
-        <div class="sidebar-brand">
-            <span class="brand-icon">📦</span>
-            <span class="brand-name">SportsStore</span>
-            <span class="brand-sub">Admin</span>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="/" class="nav-link">
-                <span class="nav-icon">◼</span> Dashboard
-            </a>
-            <a href="/orders" class="nav-link">
-                <span class="nav-icon">◼</span> Orders
-            </a>
-        </nav>
-    </aside>
-    <main class="main-content">
-        @Body
-    </main>
-</div>
+@if (!Auth.IsAuthenticated)
+{
+    // Guard — redirect to login; rendered before Body so no flash of protected content
+}
+else
+{
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <span class="brand-icon">📦</span>
+                <span class="brand-name">SportsStore</span>
+                <span class="brand-sub">Admin</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-link">
+                    <span class="nav-icon">◼</span> Dashboard
+                </a>
+                <a href="/orders" class="nav-link">
+                    <span class="nav-icon">◼</span> Orders
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="logout-btn" @onclick="Logout">⏻ Sign out</button>
+            </div>
+        </aside>
+        <main class="main-content">
+            @Body
+        </main>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (!Auth.IsAuthenticated)
+            Nav.NavigateTo("/login", forceLoad: false);
+    }
+
+    private void Logout()
+    {
+        Auth.Logout();
+        Nav.NavigateTo("/login", forceLoad: false);
+    }
+}
+
+<style>
+    .sidebar-footer {
+        margin-top: auto;
+        padding: 1rem;
+        border-top: 1px solid #2a2a4a;
+    }
+    .logout-btn {
+        width: 100%; background: transparent; border: 1px solid #3a3a5a;
+        color: #aaa; border-radius: 6px; padding: .5rem .75rem;
+        font-size: .85rem; cursor: pointer; transition: all .2s;
+    }
+    .logout-btn:hover { background: rgba(220,53,69,.15); border-color: rgba(220,53,69,.5); color: #ff6b6b; }
+</style>

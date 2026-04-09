@@ -1,0 +1,111 @@
+@page "/login"
+@layout EmptyLayout
+@rendermode InteractiveServer
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Admin Login — SportsStore</PageTitle>
+
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-header">
+            <span class="login-icon">📦</span>
+            <h1>SportsStore Admin</h1>
+            <p>Sign in to continue</p>
+        </div>
+
+        <EditForm Model="@_model" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label>Username</label>
+                <InputText @bind-Value="_model.Username" class="form-input" placeholder="Username" autocomplete="username" />
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <InputText @bind-Value="_model.Password" class="form-input" placeholder="Password" type="password" autocomplete="current-password" />
+            </div>
+
+            @if (_error)
+            {
+                <div class="login-error">Invalid username or password.</div>
+            }
+
+            <button type="submit" class="login-btn">Sign In</button>
+        </EditForm>
+    </div>
+</div>
+
+<style>
+    .login-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #0f0f1a;
+    }
+    .login-card {
+        background: #1a1a2e;
+        border: 1px solid #2a2a4a;
+        border-radius: 12px;
+        padding: 2.5rem;
+        width: 100%;
+        max-width: 380px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .login-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .login-icon { font-size: 2.5rem; display: block; margin-bottom: .5rem; }
+    .login-header h1 { color: #e0e0e0; font-size: 1.4rem; margin: 0 0 .25rem; }
+    .login-header p  { color: #888; font-size: .875rem; margin: 0; }
+    .form-group { margin-bottom: 1.1rem; }
+    .form-group label { display: block; color: #aaa; font-size: .8rem; margin-bottom: .4rem; }
+    .form-input {
+        width: 100%; padding: .65rem .9rem;
+        background: #0f0f1a; border: 1px solid #2a2a4a; border-radius: 6px;
+        color: #e0e0e0; font-size: .95rem; box-sizing: border-box;
+        transition: border-color .2s;
+    }
+    .form-input:focus { outline: none; border-color: #4361ee; }
+    .login-error {
+        background: rgba(220,53,69,.15); border: 1px solid rgba(220,53,69,.4);
+        color: #ff6b6b; border-radius: 6px; padding: .6rem .9rem;
+        font-size: .85rem; margin-bottom: 1rem;
+    }
+    .login-btn {
+        width: 100%; padding: .75rem;
+        background: #4361ee; color: #fff; border: none;
+        border-radius: 6px; font-size: 1rem; font-weight: 600;
+        cursor: pointer; transition: background .2s;
+    }
+    .login-btn:hover { background: #3451d1; }
+</style>
+
+@code {
+    private readonly LoginModel _model = new();
+    private bool _error;
+
+    protected override void OnInitialized()
+    {
+        if (Auth.IsAuthenticated)
+            Nav.NavigateTo("/");
+    }
+
+    private void HandleLogin()
+    {
+        _error = false;
+        if (!Auth.Login(_model.Username, _model.Password))
+            _error = true;
+        else
+            Nav.NavigateTo("/");
+    }
+
+    private class LoginModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
