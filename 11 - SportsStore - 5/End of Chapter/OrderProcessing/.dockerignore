@@ -1,0 +1,17 @@
+**/.git
+**/.vs
+**/bin
+**/obj
+**/*.user
+**/logs
+**/TestResults
+**/coveragereport
+
+# Never copy real credentials into Docker images
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+
+# Editor / OS noise
+**/.DS_Store
+**/Thumbs.db
+**/*.suo

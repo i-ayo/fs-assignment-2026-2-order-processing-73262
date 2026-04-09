@@ -15,7 +15,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddHttpClient<AdminApiService>(c =>
     c.BaseAddress = new Uri(
-        builder.Configuration["OrderApi:BaseUrl"] ?? "https://localhost:7050/"));
+        builder.Configuration["OrderApi:BaseUrl"] ?? "http://localhost:5100/"));
 
 var app = builder.Build();
 
