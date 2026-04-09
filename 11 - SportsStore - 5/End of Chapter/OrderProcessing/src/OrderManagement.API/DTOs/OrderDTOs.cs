@@ -45,3 +45,17 @@ public class OrderLineResponse
     public decimal UnitPrice { get; set; }
     public decimal LineTotal { get; set; }
 }
+
+/// <summary>
+/// Aggregated statistics returned by GET /api/admin/stats.
+/// Mapped via GetDashboardSummaryQueryHandler — no manual mapping in controller.
+/// </summary>
+public class DashboardSummaryResponse
+{
+    public int     TotalOrders      { get; set; }
+    public decimal TotalRevenue     { get; set; }
+    public decimal RevenueThisWeek  { get; set; }
+    public decimal RevenueThisMonth { get; set; }
+    public int     CompletedOrders  { get; set; }
+    public int     FailedOrders     { get; set; }
+}
