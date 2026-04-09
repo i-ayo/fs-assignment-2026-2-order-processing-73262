@@ -2,7 +2,9 @@
 
 > Full Stack Development · Semester 2 · Assignment 2
 
-[![CI — Build, Test & Coverage](https://github.com/i-ayo/fs-assignment-2026-2-order-processing-73262/actions/workflows/deploy.yml/badge.svg?branch=master)](https://github.com/i-ayo/fs-assignment-2026-2-order-processing-73262/actions/workflows/ci.yml)
+
+
+[![CI — Build, Test & Coverage](https://github.com/i-ayo/fs-assignment-2026-2-order-processing-73262/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/i-ayo/fs-assignment-2026-2-order-processing-73262/actions/workflows/ci.yml)
 
 ---
 
