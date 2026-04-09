@@ -1,11 +1,3 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# CI — Build, Test & Coverage
-# Runs on every push to master and every pull request targeting master.
-# Pipeline FAILS immediately if any test fails (dotnet test exits non-zero).
-#
-# Coverage report is generated and uploaded as a downloadable artifact on
-# every run. GitHub Pages deployment is a separate optional workflow.
-# ─────────────────────────────────────────────────────────────────────────────
 name: CI — Build, Test & Coverage
 
 on:
@@ -22,9 +14,9 @@ permissions:
   contents: read
 
 jobs:
-  # ── Job 1: SportsStore MVC (book baseline) ───────────────────────────────
-  sportsstore-build-test:
-    name: SportsStore MVC — Build & Test
+  # ── Job 1: Build, Test & Coverage ────────────────────────────────────────
+  build-test:
+    name: Build, Test & Coverage
     runs-on: ubuntu-latest
 
     steps:
@@ -36,17 +28,18 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore
+      # ── SportsStore MVC (book baseline) ──────────────────────────────────
+      - name: Restore — SportsStore
         run: dotnet restore "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln"
 
-      - name: Build
+      - name: Build — SportsStore
         run: |
           dotnet build \
             "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln" \
             --no-restore \
             --configuration Release
 
-      - name: Test
+      - name: Test — SportsStore
         run: |
           dotnet test \
             "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln" \
@@ -56,40 +49,20 @@ jobs:
             --logger "trx;LogFileName=sportsstore-results.trx" \
             --logger "console;verbosity=detailed"
 
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: sportsstore-test-results
-          path: "**/*.trx"
-
-  # ── Job 2: Distributed Order Processing System ───────────────────────────
-  orderprocessing-build-test:
-    name: OrderProcessing — Build, Test & Coverage
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Restore
+      # ── Distributed Order Processing System ──────────────────────────────
+      - name: Restore — OrderProcessing
         run: |
           dotnet restore \
             "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln"
 
-      - name: Build
+      - name: Build — OrderProcessing
         run: |
           dotnet build \
             "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln" \
             --no-restore \
             --configuration Release
 
-      - name: Test (with XPlat coverage)
+      - name: Test — OrderProcessing (with XPlat coverage)
         run: |
           dotnet test \
             "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln" \
@@ -101,19 +74,10 @@ jobs:
             --collect:"XPlat Code Coverage" \
             --results-directory ./TestResults
 
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: orderprocessing-test-results
-          path: "**/*.trx"
-
       - name: Install ReportGenerator
-        if: always()
         run: dotnet tool install -g dotnet-reportgenerator-globaltool
 
       - name: Generate HTML coverage report
-        if: always()
         shell: bash
         run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
@@ -121,7 +85,7 @@ jobs:
             -reports:"**/coverage.cobertura.xml" \
             -targetdir:"coveragereport" \
             -reporttypes:"Html;Cobertura;MarkdownSummary" \
-            -title:"SportsStore — Order Processing Coverage"
+            -title:"Order Processing — Coverage Report"
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
@@ -129,3 +93,31 @@ jobs:
         with:
           name: coverage-report
           path: coveragereport
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: github-pages
+          path: coveragereport
+
+  # ── Job 2: Deploy Coverage → GitHub Pages ────────────────────────────────
+  deploy:
+    name: Deploy Coverage → GitHub Pages
+    needs: build-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
