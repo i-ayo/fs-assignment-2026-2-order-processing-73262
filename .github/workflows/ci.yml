@@ -1,16 +1,23 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# CI — Build & Test
-# Runs on every push to master and on every pull request targeting master.
-# The workflow FAILS immediately if any test fails (dotnet test exits non-zero).
-# Test results are published as TRX artifacts and surfaced in the PR check UI.
+# CI — Build, Test & Coverage
+# Runs on every push to master and every pull request targeting master.
+# Pipeline FAILS immediately if any test fails (dotnet test exits non-zero).
+# On push to master the HTML coverage report is published to GitHub Pages.
 # ─────────────────────────────────────────────────────────────────────────────
-name: CI — Build & Test
+name: CI — Build, Test & Coverage
 
 on:
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   # ── Job 1: SportsStore MVC (book baseline) ───────────────────────────────
@@ -27,7 +34,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore dependencies
+      - name: Restore
         run: dotnet restore "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln"
 
       - name: Build
@@ -56,7 +63,7 @@ jobs:
 
   # ── Job 2: Distributed Order Processing System ───────────────────────────
   orderprocessing-build-test:
-    name: OrderProcessing — Build & Test
+    name: OrderProcessing — Build, Test & Coverage
     runs-on: ubuntu-latest
 
     steps:
@@ -68,7 +75,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore dependencies
+      - name: Restore
         run: |
           dotnet restore \
             "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln"
@@ -80,7 +87,7 @@ jobs:
             --no-restore \
             --configuration Release
 
-      - name: Test (with coverage)
+      - name: Test (with XPlat coverage)
         run: |
           dotnet test \
             "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln" \
@@ -92,20 +99,61 @@ jobs:
             --collect:"XPlat Code Coverage" \
             --results-directory ./TestResults
 
-      - name: Upload test results & coverage
+      - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: orderprocessing-test-results
-          path: |
-            **/*.trx
-            TestResults/**/coverage.cobertura.xml
+          path: "**/*.trx"
 
-      - name: Publish test report
-        uses: dorny/test-reporter@v1
+      - name: Install ReportGenerator
+        if: always()
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Generate HTML coverage report
+        if: always()
+        shell: bash
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          reportgenerator \
+            -reports:"**/coverage.cobertura.xml" \
+            -targetdir:"coveragereport" \
+            -reporttypes:"Html;Cobertura;MarkdownSummary" \
+            -title:"SportsStore — Order Processing Coverage"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: "Order Processing — Test Report"
-          path: "**/*orderprocessing-results.trx"
-          reporter: dotnet-trx
-          fail-on-error: true
+          name: coverage-report
+          path: coveragereport
+
+      - name: Upload Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: github-pages
+          path: coveragereport
+
+  # ── Job 3: Deploy coverage report to GitHub Pages (master only) ──────────
+  deploy-coverage:
+    name: Deploy Coverage → GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: orderprocessing-build-test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
