@@ -7,10 +7,10 @@
     <title>SportsStore Admin</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a1a2e'/%3E%3Crect x='10' y='38' width='10' height='16' rx='2' fill='%234361ee'/%3E%3Crect x='27' y='26' width='10' height='28' rx='2' fill='%234cc9f0'/%3E%3Crect x='44' y='16' width='10' height='38' rx='2' fill='%234361ee'/%3E%3Cpath d='M14 32 L32 20 L49 10' stroke='%23FFD700' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="app.css" />
-    <HeadOutlet @rendermode="InteractiveServer" />
+    <HeadOutlet @rendermode="new InteractiveServerRenderMode(prerender: false)" />
 </head>
 <body>
-    <Routes @rendermode="InteractiveServer" />
+    <Routes @rendermode="new InteractiveServerRenderMode(prerender: false)" />
     <script src="_framework/blazor.server.js"></script>
 </body>
 </html>

@@ -1,0 +1,103 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CD — Docker Build & Publish
+# Runs ONLY after the CI (Build & Test) workflow passes on master.
+# Builds all service Docker images and pushes them to GitHub Container Registry
+# (ghcr.io). Images are tagged with both the short commit SHA and "latest".
+#
+# Required repository secret:  GHCR_TOKEN  (a PAT with write:packages scope)
+# ─────────────────────────────────────────────────────────────────────────────
+name: CD — Docker Build & Publish
+
+on:
+  workflow_run:
+    workflows: ["CI — Build & Test"]
+    branches: [ "master" ]
+    types: [ completed ]
+
+jobs:
+  docker-build-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    # Only run when the CI workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+      SOLUTION_ROOT: "11 - SportsStore - 5/End of Chapter/OrderProcessing"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set short SHA tag
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      # ── Build and push each service image ──────────────────────────────────
+      - name: Build & push OrderManagement.API
+        uses: docker/build-push-action@v5
+        with:
+          context: "${{ env.SOLUTION_ROOT }}"
+          file: "${{ env.SOLUTION_ROOT }}/src/OrderManagement.API/Dockerfile"
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/ordermanagement-api:${{ steps.vars.outputs.sha_short }}
+            ${{ env.IMAGE_PREFIX }}/ordermanagement-api:latest
+
+      - name: Build & push InventoryService
+        uses: docker/build-push-action@v5
+        with:
+          context: "${{ env.SOLUTION_ROOT }}"
+          file: "${{ env.SOLUTION_ROOT }}/src/InventoryService/Dockerfile"
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/inventory-service:${{ steps.vars.outputs.sha_short }}
+            ${{ env.IMAGE_PREFIX }}/inventory-service:latest
+
+      - name: Build & push PaymentService
+        uses: docker/build-push-action@v5
+        with:
+          context: "${{ env.SOLUTION_ROOT }}"
+          file: "${{ env.SOLUTION_ROOT }}/src/PaymentService/Dockerfile"
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/payment-service:${{ steps.vars.outputs.sha_short }}
+            ${{ env.IMAGE_PREFIX }}/payment-service:latest
+
+      - name: Build & push ShippingService
+        uses: docker/build-push-action@v5
+        with:
+          context: "${{ env.SOLUTION_ROOT }}"
+          file: "${{ env.SOLUTION_ROOT }}/src/ShippingService/Dockerfile"
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/shipping-service:${{ steps.vars.outputs.sha_short }}
+            ${{ env.IMAGE_PREFIX }}/shipping-service:latest
+
+      - name: Build & push CustomerPortal
+        uses: docker/build-push-action@v5
+        with:
+          context: "${{ env.SOLUTION_ROOT }}"
+          file: "${{ env.SOLUTION_ROOT }}/src/CustomerPortal/Dockerfile"
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/customer-portal:${{ steps.vars.outputs.sha_short }}
+            ${{ env.IMAGE_PREFIX }}/customer-portal:latest
+
+      - name: Build & push AdminDashboard
+        uses: docker/build-push-action@v5
+        with:
+          context: "${{ env.SOLUTION_ROOT }}"
+          file: "${{ env.SOLUTION_ROOT }}/src/AdminDashboard/Dockerfile"
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/admin-dashboard:${{ steps.vars.outputs.sha_short }}
+            ${{ env.IMAGE_PREFIX }}/admin-dashboard:latest

@@ -1,4 +1,10 @@
-name: SportsStore CI
+# ─────────────────────────────────────────────────────────────────────────────
+# CI — Build & Test
+# Runs on every push to master and on every pull request targeting master.
+# The workflow FAILS immediately if any test fails (dotnet test exits non-zero).
+# Test results are published as TRX artifacts and surfaced in the PR check UI.
+# ─────────────────────────────────────────────────────────────────────────────
+name: CI — Build & Test
 
 on:
   push:
@@ -7,13 +13,13 @@ on:
     branches: [ "master" ]
 
 jobs:
-  # ── Job 1: Original monolithic SportsStore (book exercises) ──────────────
-  sportsstore:
-    name: SportsStore (MVC)
+  # ── Job 1: SportsStore MVC (book baseline) ───────────────────────────────
+  sportsstore-build-test:
+    name: SportsStore MVC — Build & Test
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup .NET 10
@@ -24,27 +30,37 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln"
 
-      - name: Build solution
-        run: dotnet build "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln" --no-restore --configuration Release
+      - name: Build
+        run: |
+          dotnet build \
+            "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln" \
+            --no-restore \
+            --configuration Release
 
-      - name: Run tests
-        # Pipeline fails automatically if any test fails (dotnet test exits non-zero)
-        run: dotnet test "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln" --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=sportsstore-results.trx"
+      - name: Test
+        run: |
+          dotnet test \
+            "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln" \
+            --no-build \
+            --configuration Release \
+            --verbosity normal \
+            --logger "trx;LogFileName=sportsstore-results.trx" \
+            --logger "console;verbosity=detailed"
 
-      - name: Upload SportsStore test results
+      - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: sportsstore-test-results
           path: "**/*.trx"
 
-  # ── Job 2: Distributed Order Processing System ────────────────────────────
-  order-processing:
-    name: Order Processing (Distributed)
+  # ── Job 2: Distributed Order Processing System ───────────────────────────
+  orderprocessing-build-test:
+    name: OrderProcessing — Build & Test
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup .NET 10
@@ -53,25 +69,43 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln"
+        run: |
+          dotnet restore \
+            "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln"
 
-      - name: Build solution
-        run: dotnet build "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln" --no-restore --configuration Release
+      - name: Build
+        run: |
+          dotnet build \
+            "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln" \
+            --no-restore \
+            --configuration Release
 
-      - name: Run tests
-        # Pipeline fails automatically if any test fails (dotnet test exits non-zero)
-        run: >
-          dotnet test
-          "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln"
-          --no-build --configuration Release --verbosity normal
-          --logger "trx;LogFileName=orderprocessing-results.trx"
-          --collect:"XPlat Code Coverage"
+      - name: Test (with coverage)
+        run: |
+          dotnet test \
+            "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln" \
+            --no-build \
+            --configuration Release \
+            --verbosity normal \
+            --logger "trx;LogFileName=orderprocessing-results.trx" \
+            --logger "console;verbosity=detailed" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults
 
-      - name: Upload Order Processing test results
+      - name: Upload test results & coverage
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: orderprocessing-test-results
           path: |
-            **/*orderprocessing-results.trx
-            **/coverage.cobertura.xml
+            **/*.trx
+            TestResults/**/coverage.cobertura.xml
+
+      - name: Publish test report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: "Order Processing — Test Report"
+          path: "**/*orderprocessing-results.trx"
+          reporter: dotnet-trx
+          fail-on-error: true
