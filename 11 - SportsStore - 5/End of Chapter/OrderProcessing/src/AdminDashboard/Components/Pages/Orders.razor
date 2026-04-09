@@ -1,0 +1,337 @@
+@page "/orders"
+@inject AdminApiService Api
+@inject ILogger<Orders> Logger
+@implements IAsyncDisposable
+
+<PageTitle>Orders — SportsStore Admin</PageTitle>
+
+<div class="page-header">
+    <h1 class="page-title">Orders</h1>
+    <button class="btn-apple btn-secondary" @onclick="RefreshAsync">↺ Refresh</button>
+</div>
+
+<!-- ── Filters ─────────────────────────────────────────────────────────────── -->
+<div class="filter-bar">
+    <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <select class="apple-select" @bind="_statusFilter">
+            <option value="">All Statuses</option>
+            <option value="Submitted">Submitted</option>
+            <option value="InventoryPending">Inventory Pending</option>
+            <option value="InventoryConfirmed">Inventory Confirmed</option>
+            <option value="InventoryFailed">Inventory Failed</option>
+            <option value="PaymentPending">Payment Pending</option>
+            <option value="PaymentApproved">Payment Approved</option>
+            <option value="PaymentFailed">Payment Failed</option>
+            <option value="ShippingPending">Shipping Pending</option>
+            <option value="ShippingCreated">Shipping Created</option>
+            <option value="Completed">Completed</option>
+            <option value="Failed">Failed</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label class="filter-label">Customer ID</label>
+        <input class="apple-input" placeholder="e.g. CUST001" @bind="_customerFilter" />
+    </div>
+    <button class="btn-apple btn-primary" @onclick="ApplyFiltersAsync">Search</button>
+    <button class="btn-apple btn-ghost" @onclick="ClearFiltersAsync">Clear</button>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-card">Loading orders…</div>
+}
+else if (!_orders.Any())
+{
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>No orders match your filters.</p>
+    </div>
+}
+else
+{
+    <div class="table-card">
+        <table class="apple-table">
+            <thead>
+                <tr>
+                    <th style="width:28px;"></th>
+                    <th @onclick='() => Sort("Id")' class="sortable">
+                        Order <span class="sort-icon">@SortIcon("Id")</span>
+                    </th>
+                    <th @onclick='() => Sort("CustomerName")' class="sortable">
+                        Customer <span class="sort-icon">@SortIcon("CustomerName")</span>
+                    </th>
+                    <th @onclick='() => Sort("CreatedAt")' class="sortable">
+                        Date <span class="sort-icon">@SortIcon("CreatedAt")</span>
+                    </th>
+                    <th @onclick='() => Sort("TotalAmount")' class="sortable">
+                        Total <span class="sort-icon">@SortIcon("TotalAmount")</span>
+                    </th>
+                    <th @onclick='() => Sort("Status")' class="sortable">
+                        Status <span class="sort-icon">@SortIcon("Status")</span>
+                    </th>
+                    <th>Failure Reason</th>
+                    <th>Payment Ref</th>
+                    <th>Tracking</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in SortedOrders())
+                {
+                    var isExpanded = _expandedOrderId == o.Id;
+                    <tr class="@RowClass(o.Status) data-row"
+                        @onclick="() => ToggleExpand(o.Id)"
+                        style="cursor:pointer;">
+                        <td style="text-align:center;font-size:11px;color:#8E8E93;">
+                            @(isExpanded ? "▾" : "▸")
+                        </td>
+                        <td class="mono-sm">@o.Id.ToString()[..8]…</td>
+                        <td>
+                            <div class="customer-cell">
+                                <span class="customer-name">@o.CustomerName</span>
+                                <span class="customer-id">@o.CustomerId</span>
+                            </div>
+                        </td>
+                        <td class="date-cell">@o.CreatedAt.ToLocalTime().ToString("dd MMM HH:mm")</td>
+                        <td class="amount-cell">@o.TotalAmount.ToString("C")</td>
+                        <td>
+                            <span class="status-badge @StatusClass(o.Status)">@o.Status</span>
+                        </td>
+                        <td class="failure-cell">
+                            @if (!string.IsNullOrEmpty(o.FailureReason))
+                            {
+                                <span class="failure-reason" title="@o.FailureReason">
+                                    ⚠ @o.FailureReason
+                                </span>
+                            }
+                            else
+                            {
+                                <span style="color:#C7C7CC;">—</span>
+                            }
+                        </td>
+                        <td class="mono-sm">@(o.PaymentTransactionId ?? "—")</td>
+                        <td class="mono-sm">@(o.TrackingNumber ?? "—")</td>
+                    </tr>
+                    @if (isExpanded)
+                    {
+                        <tr class="detail-row">
+                            <td colspan="9" style="padding:0;">
+                                <div class="detail-panel">
+                                    <div class="detail-header">Order Lines</div>
+                                    @if (!o.Lines.Any())
+                                    {
+                                        <p style="color:#8E8E93;font-size:13px;padding:8px 0;">No line items.</p>
+                                    }
+                                    else
+                                    {
+                                        <table class="lines-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Product</th>
+                                                    <th style="text-align:center;">Qty</th>
+                                                    <th style="text-align:right;">Unit Price</th>
+                                                    <th style="text-align:right;">Line Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var l in o.Lines)
+                                                {
+                                                    <tr>
+                                                        <td>@l.ProductName</td>
+                                                        <td style="text-align:center;">@l.Quantity</td>
+                                                        <td style="text-align:right;">@l.UnitPrice.ToString("C")</td>
+                                                        <td style="text-align:right;font-weight:600;">@l.LineTotal.ToString("C")</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    }
+                                    <div class="detail-meta">
+                                        <span><strong>Shipping:</strong> @o.ShippingAddress</span>
+                                        @if (!string.IsNullOrEmpty(o.PaymentTransactionId))
+                                        {
+                                            <span><strong>Payment Ref:</strong>
+                                                <code>@o.PaymentTransactionId</code></span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(o.TrackingNumber))
+                                        {
+                                            <span><strong>Tracking:</strong>
+                                                <code>@o.TrackingNumber</code></span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(o.FailureReason))
+                                        {
+                                            <span style="color:#C0392B;">
+                                                <strong>Failure:</strong> @o.FailureReason
+                                            </span>
+                                        }
+                                        <span><strong>Last updated:</strong>
+                                            @o.UpdatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm:ss")</span>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+        <div class="table-footer">
+            Showing @SortedOrders().Count orders
+            @if (_orders.Any(o => o.Status == Shared.Domain.Enums.OrderStatus.Completed))
+            {
+                <span class="revenue-summary">
+                    · Revenue: @_orders
+                        .Where(o => o.Status == Shared.Domain.Enums.OrderStatus.Completed)
+                        .Sum(o => o.TotalAmount).ToString("C")
+                    <span class="revenue-note">(completed only)</span>
+                </span>
+            }
+        </div>
+    </div>
+}
+
+<style>
+    .data-row:hover td { background: #F5F5F7; }
+    .detail-row td { background: #FAFAFA !important; }
+    .detail-panel {
+        padding: 16px 20px 20px;
+        border-top: 1px solid #E5E5EA;
+        border-bottom: 2px solid rgba(0,122,255,.15);
+        animation: slideDown .15s ease;
+    }
+    @@keyframes slideDown { from { opacity:0; transform: translateY(-4px); } to { opacity:1; transform: none; } }
+    .detail-header {
+        font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .06em; color: #8E8E93; margin-bottom: 10px;
+    }
+    .detail-meta {
+        display: flex; flex-wrap: wrap; gap: 16px;
+        margin-top: 12px; font-size: 13px; color: #3A3A3C;
+    }
+    .detail-meta span { display: flex; gap: 4px; align-items: center; }
+    .detail-meta code {
+        font-family: 'SF Mono', monospace; font-size: 12px;
+        background: #F2F2F7; padding: 2px 6px; border-radius: 4px;
+    }
+    .lines-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .lines-table th {
+        padding: 6px 10px; font-size: 11px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: .04em;
+        color: #8E8E93; border-bottom: 1px solid #E5E5EA; text-align: left;
+    }
+    .lines-table td { padding: 8px 10px; border-bottom: 1px solid #F2F2F7; }
+    .failure-cell { max-width: 200px; }
+    .failure-reason {
+        color: #C0392B; font-size: 12px; font-weight: 500;
+        display: block; white-space: nowrap; overflow: hidden;
+        text-overflow: ellipsis; max-width: 180px; cursor: help;
+    }
+</style>
+
+@code {
+    private List<OrderSummary> _orders         = [];
+    private bool               _loading        = true;
+    private string             _statusFilter   = string.Empty;
+    private string             _customerFilter = string.Empty;
+    private string             _sortField      = "CreatedAt";
+    private bool               _sortAsc        = false;
+    private Guid?              _expandedOrderId;
+    private Timer?             _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        // Auto-refresh every 15 s so the dashboard stays live.
+        // The callback is an async-void equivalent (Timer delegate), so ALL
+        // exceptions must be caught here — an unhandled throw would crash the
+        // Blazor SignalR circuit and freeze the entire admin UI.
+        _timer = new Timer(async _ =>
+        {
+            try
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (Exception ex)
+            {
+                // Log and swallow — a transient API failure should not kill the circuit.
+                // The next timer tick will retry automatically.
+                Logger.LogWarning(ex, "Auto-refresh failed — will retry in 15 s");
+            }
+        }, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
+    }
+
+    private async Task RefreshAsync()
+    {
+        _loading = true;
+        _orders  = await Api.GetOrdersAsync(_statusFilter, _customerFilter);
+        _loading = false;
+        Logger.LogInformation(
+            "Orders refreshed. Count: {Count}, StatusFilter: {Filter}",
+            _orders.Count, _statusFilter);
+    }
+
+    private async Task ApplyFiltersAsync() => await RefreshAsync();
+
+    private async Task ClearFiltersAsync()
+    {
+        _statusFilter    = string.Empty;
+        _customerFilter  = string.Empty;
+        _expandedOrderId = null;
+        await RefreshAsync();
+    }
+
+    private void ToggleExpand(Guid id)
+        => _expandedOrderId = (_expandedOrderId == id) ? null : id;
+
+    private void Sort(string field)
+    {
+        if (_sortField == field) _sortAsc = !_sortAsc;
+        else { _sortField = field; _sortAsc = true; }
+    }
+
+    private string SortIcon(string field)
+        => _sortField != field ? "⇅" : _sortAsc ? "↑" : "↓";
+
+    private List<OrderSummary> SortedOrders() => _sortField switch
+    {
+        "CustomerName" => _sortAsc
+            ? _orders.OrderBy(o => o.CustomerName).ToList()
+            : _orders.OrderByDescending(o => o.CustomerName).ToList(),
+        "TotalAmount"  => _sortAsc
+            ? _orders.OrderBy(o => o.TotalAmount).ToList()
+            : _orders.OrderByDescending(o => o.TotalAmount).ToList(),
+        "Status"       => _sortAsc
+            ? _orders.OrderBy(o => o.Status.ToString()).ToList()
+            : _orders.OrderByDescending(o => o.Status.ToString()).ToList(),
+        _              => _sortAsc
+            ? _orders.OrderBy(o => o.CreatedAt).ToList()
+            : _orders.OrderByDescending(o => o.CreatedAt).ToList()
+    };
+
+    private static string StatusClass(Shared.Domain.Enums.OrderStatus s) => s switch
+    {
+        Shared.Domain.Enums.OrderStatus.Submitted                                        => "badge-blue",
+        Shared.Domain.Enums.OrderStatus.InventoryPending  or
+        Shared.Domain.Enums.OrderStatus.InventoryConfirmed or
+        Shared.Domain.Enums.OrderStatus.PaymentPending    or
+        Shared.Domain.Enums.OrderStatus.PaymentApproved                                  => "badge-pink",
+        Shared.Domain.Enums.OrderStatus.ShippingPending   or
+        Shared.Domain.Enums.OrderStatus.ShippingCreated   or
+        Shared.Domain.Enums.OrderStatus.Completed                                        => "badge-yellow",
+        _                                                                                 => "badge-gray"
+    };
+
+    private static string RowClass(Shared.Domain.Enums.OrderStatus s) => s switch
+    {
+        Shared.Domain.Enums.OrderStatus.Failed or
+        Shared.Domain.Enums.OrderStatus.PaymentFailed or
+        Shared.Domain.Enums.OrderStatus.InventoryFailed => "row-failed",
+        Shared.Domain.Enums.OrderStatus.Completed       => "row-completed",
+        _                                                => ""
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_timer is not null) await _timer.DisposeAsync();
+    }
+}

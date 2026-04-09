@@ -1,0 +1,20 @@
+@model int
+@{
+    ViewBag.Title = "Payment Failed";
+}
+
+<div class="text-center p-4">
+    <h2 class="text-danger">
+        <span class="bi bi-exclamation-triangle-fill"></span> Payment Failed
+    </h2>
+    <p class="lead">We could not process your payment. You have not been charged.</p>
+    <p class="text-muted">Order reference: <strong>#@Model</strong></p>
+    <hr />
+    <p>Please try again with a different card.</p>
+    <a class="btn btn-danger btn-lg me-2" asp-controller="Order" asp-action="Checkout">
+        Try Again
+    </a>
+    <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Index">
+        Continue Shopping
+    </a>
+</div>

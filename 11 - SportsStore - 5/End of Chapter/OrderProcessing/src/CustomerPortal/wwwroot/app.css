@@ -1,0 +1,231 @@
+/* ── Apple-inspired Customer Portal design system ───────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --apple-blue:      #007AFF;
+  --apple-green:     #34C759;
+  --apple-red:       #FF3B30;
+  --apple-orange:    #FF9500;
+  --apple-gray:      #8E8E93;
+  --apple-gray2:     #AEAEB2;
+  --apple-gray6:     #F2F2F7;
+  --apple-label:     #1C1C1E;
+  --apple-label2:    #3A3A3C;
+  --apple-separator: #C6C6C8;
+  --radius:          12px;
+  --radius-sm:       8px;
+  --shadow-sm:       0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:       0 4px 16px rgba(0,0,0,.10);
+  --nav-height:      60px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+               "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  background: var(--apple-gray6);
+  color: var(--apple-label);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Headings ─────────────────────────────────────────────────────────── */
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -.4px;
+  color: var(--apple-label);
+  margin-bottom: 24px;
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  border: none;
+}
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+.card-header {
+  padding: 14px 20px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--apple-label);
+  border-bottom: 1px solid var(--apple-gray6);
+  background: #fff;
+}
+.card-body {
+  padding: 20px;
+}
+.card-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--apple-gray6);
+  background: #fff;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: opacity .15s, background .15s;
+  line-height: 1;
+}
+.btn:hover   { opacity: .88; }
+.btn:active  { opacity: .72; }
+.btn:disabled,
+.btn[disabled] {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--apple-blue);
+  color: #fff;
+}
+.btn-secondary {
+  background: var(--apple-gray6);
+  color: var(--apple-label);
+  border: 1px solid var(--apple-separator);
+}
+.btn-secondary:hover { background: #E5E5EA; opacity: 1; }
+
+.btn-danger {
+  background: var(--apple-red);
+  color: #fff;
+}
+.btn-lg {
+  padding: 14px 32px;
+  font-size: 16px;
+  border-radius: 10px;
+}
+.w-100 { width: 100%; }
+
+/* ── Form controls ────────────────────────────────────────────────────── */
+.form-control,
+.form-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--apple-separator);
+  border-radius: var(--radius-sm);
+  background: var(--apple-gray6);
+  color: var(--apple-label);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border .15s, box-shadow .15s;
+}
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--apple-blue);
+  box-shadow: 0 0 0 3px rgba(0,122,255,.15);
+  background: #fff;
+}
+textarea.form-control { resize: vertical; }
+
+.form-label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--apple-gray);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 6px;
+}
+.form-hint {
+  font-size: 12px;
+  color: var(--apple-gray);
+  margin-top: 4px;
+}
+
+/* ── Status badges ────────────────────────────────────────────────────── */
+/* Used in MyOrders, OrderConfirmation, and CustomerPortal pages */
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* badge-submitted: Submitted state → Apple blue tint */
+.badge-submitted { background: rgba(0,122,255,.13);  color: #0056cc; }
+/* badge-completed: Completed → green */
+.badge-completed { background: rgba(52,199,89,.15);  color: #1a7f37; }
+/* badge-failed: InventoryFailed / PaymentFailed / Failed → red */
+.badge-failed    { background: rgba(255,59,48,.12);  color: #cc2200; }
+/* badge-progress: all intermediate states → warm orange */
+.badge-progress  { background: rgba(255,149,0,.15);  color: #9c5900; }
+
+/* ── Bootstrap compat overrides (stock & table badges) ───────────────── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge.bg-success   { background: rgba(52,199,89,.15)   !important; color: #1a7f37 !important; }
+.badge.bg-warning   { background: rgba(255,149,0,.15)   !important; color: #9c5900 !important; }
+.badge.bg-secondary { background: rgba(142,142,147,.15) !important; color: #636366 !important; }
+.badge.bg-primary   { background: rgba(0,122,255,.13)   !important; color: #0056cc !important; }
+.badge.bg-danger    { background: rgba(255,59,48,.12)   !important; color: #cc2200 !important; }
+.rounded-pill       { border-radius: 20px !important; }
+
+/* ── Alert banners ────────────────────────────────────────────────────── */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+.alert-info    { background: rgba(0,122,255,.08);  color: #0056cc; }
+.alert-success { background: rgba(52,199,89,.10);  color: #1a7f37; }
+.alert-warning { background: rgba(255,149,0,.10);  color: #9c5900; }
+.alert-danger  { background: rgba(255,59,48,.08);  color: #cc2200; }
+.alert-link    { font-weight: 700; color: inherit; }
+.btn-close     { background: none; border: none; cursor: pointer;
+                 font-size: 18px; color: inherit; margin-left: auto; padding: 0 4px; }
+.alert-dismissible { position: relative; }
+
+/* ── Loading / empty states ───────────────────────────────────────────── */
+.loading-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--apple-gray);
+  font-size: 15px;
+}
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--apple-gray);
+}
+.empty-icon  { font-size: 48px; margin-bottom: 16px; }
+.empty-title { font-size: 18px; font-weight: 600; color: var(--apple-label2); margin-bottom: 8px; }
+.empty-msg   { font-size: 14px; color: var(--apple-gray); margin-bottom: 20px; }
+
+/* ── Utility ──────────────────────────────────────────────────────────── */
+.font-monospace { font-family: "SF Mono","Menlo",monospace !important; }
+.small          { font-size: 12px; }
+.fw-bold        { font-weight: 700; }
+.text-muted     { color: var(--apple-gray); }

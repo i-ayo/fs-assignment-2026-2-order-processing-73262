@@ -1,0 +1,300 @@
+@page "/"
+
+<PageTitle>SportsStore — Premium Sports Equipment</PageTitle>
+
+@* ══════════════════════════════════════════════════════════════════
+   HERO SECTION
+   ══════════════════════════════════════════════════════════════════ *@
+<div class="hero">
+    <div class="hero-inner">
+        <p class="hero-eyebrow">New Season. New Gear.</p>
+        <h1 class="hero-headline">
+            Play harder.<br />
+            <span class="hero-accent">Win smarter.</span>
+        </h1>
+        <p class="hero-sub">
+            Premium sports equipment for athletes at every level — from championship
+            watersports to competitive chess. Everything you need, all in one place.
+        </p>
+        <div class="hero-actions">
+            <a href="/shop" class="hero-btn-primary">Shop Now</a>
+            <a href="/my-orders" class="hero-btn-secondary">Track Orders</a>
+        </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+        <div class="hero-blob"></div>
+        <div class="hero-icons">
+            <span class="hi hi-1">⚽</span>
+            <span class="hi hi-2">🚣</span>
+            <span class="hi hi-3">♟️</span>
+            <span class="hi hi-4">🎯</span>
+            <span class="hi hi-5">🏅</span>
+        </div>
+    </div>
+</div>
+
+@* ══════════════════════════════════════════════════════════════════
+   CATEGORY CARDS
+   ══════════════════════════════════════════════════════════════════ *@
+<section class="categories">
+    <h2 class="section-title">Shop by Category</h2>
+    <div class="cat-grid">
+        <a href="/shop" class="cat-card">
+            <span class="cat-card-emoji">⚽</span>
+            <span class="cat-card-name">Soccer</span>
+            <span class="cat-card-sub">Balls, flags &amp; more</span>
+            <span class="cat-card-arrow">→</span>
+        </a>
+        <a href="/shop" class="cat-card">
+            <span class="cat-card-emoji">🚣</span>
+            <span class="cat-card-name">Watersports</span>
+            <span class="cat-card-sub">Kayaks &amp; lifejackets</span>
+            <span class="cat-card-arrow">→</span>
+        </a>
+        <a href="/shop" class="cat-card">
+            <span class="cat-card-emoji">♟️</span>
+            <span class="cat-card-name">Chess</span>
+            <span class="cat-card-sub">Boards &amp; tournament pieces</span>
+            <span class="cat-card-arrow">→</span>
+        </a>
+        <a href="/shop" class="cat-card">
+            <span class="cat-card-emoji">🎯</span>
+            <span class="cat-card-name">Gear</span>
+            <span class="cat-card-sub">Performance accessories</span>
+            <span class="cat-card-arrow">→</span>
+        </a>
+    </div>
+</section>
+
+@* ══════════════════════════════════════════════════════════════════
+   FEATURE STRIP
+   ══════════════════════════════════════════════════════════════════ *@
+<section class="features-strip">
+    <div class="feat">
+        <span class="feat-icon">🚚</span>
+        <div>
+            <div class="feat-title">Fast Fulfilment</div>
+            <div class="feat-desc">Orders processed in real-time via our distributed pipeline</div>
+        </div>
+    </div>
+    <div class="feat-divider"></div>
+    <div class="feat">
+        <span class="feat-icon">🔒</span>
+        <div>
+            <div class="feat-title">Secure Checkout</div>
+            <div class="feat-desc">Your data is protected at every step of the process</div>
+        </div>
+    </div>
+    <div class="feat-divider"></div>
+    <div class="feat">
+        <span class="feat-icon">📦</span>
+        <div>
+            <div class="feat-title">Live Tracking</div>
+            <div class="feat-desc">Check your order status anytime with your Customer ID</div>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* ── Hero ──────────────────────────────────────────────────────── */
+    .hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 40px;
+        min-height: 420px;
+        padding: 56px 0 64px;
+        overflow: hidden;
+    }
+    .hero-inner { flex: 1; min-width: 0; }
+
+    .hero-eyebrow {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: #6366f1;
+        margin: 0 0 16px;
+    }
+
+    .hero-headline {
+        font-size: clamp(40px, 5vw, 64px);
+        font-weight: 800;
+        letter-spacing: -.03em;
+        line-height: 1.08;
+        color: #1C1C1E;
+        margin: 0 0 20px;
+    }
+    .hero-accent {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .hero-sub {
+        font-size: 17px;
+        color: #6E6E73;
+        line-height: 1.6;
+        max-width: 520px;
+        margin: 0 0 32px;
+    }
+
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .hero-btn-primary {
+        display: inline-flex; align-items: center;
+        padding: 14px 28px;
+        background: #1C1C1E;
+        color: #fff;
+        border-radius: 980px;
+        font-size: 15px; font-weight: 600;
+        text-decoration: none;
+        transition: background .18s, transform .12s;
+        letter-spacing: -.01em;
+    }
+    .hero-btn-primary:hover {
+        background: #3a3a3c;
+        transform: translateY(-1px);
+    }
+
+    .hero-btn-secondary {
+        display: inline-flex; align-items: center;
+        padding: 14px 28px;
+        background: transparent;
+        color: #1C1C1E;
+        border: 1.5px solid #D1D1D6;
+        border-radius: 980px;
+        font-size: 15px; font-weight: 600;
+        text-decoration: none;
+        transition: border-color .18s, color .18s, transform .12s;
+        letter-spacing: -.01em;
+    }
+    .hero-btn-secondary:hover {
+        border-color: #6366f1;
+        color: #6366f1;
+        transform: translateY(-1px);
+    }
+
+    /* ── Hero visual (floating emoji) ─────────────────────────────── */
+    .hero-visual {
+        position: relative;
+        flex-shrink: 0;
+        width: 360px;
+        height: 360px;
+    }
+    .hero-blob {
+        position: absolute; inset: 0;
+        background: radial-gradient(ellipse at 60% 40%, rgba(99,102,241,.14) 0%, rgba(139,92,246,.08) 55%, transparent 70%);
+        border-radius: 50%;
+        animation: blob-pulse 6s ease-in-out infinite;
+    }
+    @@keyframes blob-pulse {
+        0%, 100% { transform: scale(1) rotate(0deg); }
+        50%       { transform: scale(1.06) rotate(8deg); }
+    }
+    .hero-icons { position: absolute; inset: 0; }
+    .hi {
+        position: absolute;
+        font-size: 52px;
+        line-height: 1;
+        animation: float 5s ease-in-out infinite;
+        user-select: none;
+    }
+    .hi-1 { top: 12%; left: 42%; animation-delay: 0s;    font-size: 58px; }
+    .hi-2 { top: 28%; left: 10%; animation-delay: 0.8s;  font-size: 48px; }
+    .hi-3 { top: 55%; left: 55%; animation-delay: 1.6s;  font-size: 54px; }
+    .hi-4 { top: 70%; left: 18%; animation-delay: 2.4s;  font-size: 46px; }
+    .hi-5 { top: 40%; left: 72%; animation-delay: 3.2s;  font-size: 50px; }
+    @@keyframes float {
+        0%, 100% { transform: translateY(0px);  }
+        50%       { transform: translateY(-14px); }
+    }
+
+    /* ── Section title ────────────────────────────────────────────── */
+    .section-title {
+        font-size: 28px; font-weight: 700; letter-spacing: -.02em;
+        color: #1C1C1E; margin: 0 0 28px;
+    }
+
+    /* ── Category cards ───────────────────────────────────────────── */
+    .categories { margin-bottom: 64px; }
+
+    .cat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 16px;
+    }
+
+    .cat-card {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 28px 24px;
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+        text-decoration: none;
+        color: inherit;
+        transition: box-shadow .18s, transform .18s;
+        position: relative;
+        overflow: hidden;
+    }
+    .cat-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,.10), 0 12px 36px rgba(0,0,0,.08);
+        transform: translateY(-4px);
+    }
+    .cat-card-emoji {
+        font-size: 36px; line-height: 1; margin-bottom: 10px; display: block;
+    }
+    .cat-card-name {
+        font-size: 16px; font-weight: 700; color: #1C1C1E; display: block;
+    }
+    .cat-card-sub {
+        font-size: 13px; color: #8E8E93; display: block;
+    }
+    .cat-card-arrow {
+        position: absolute; bottom: 24px; right: 24px;
+        font-size: 18px; color: #C7C7CC;
+        transition: color .15s, transform .15s;
+    }
+    .cat-card:hover .cat-card-arrow {
+        color: #6366f1;
+        transform: translateX(4px);
+    }
+
+    /* ── Feature strip ───────────────────────────────────────────── */
+    .features-strip {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        background: #fff;
+        border-radius: 20px;
+        padding: 28px 32px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.05);
+        margin-bottom: 40px;
+        flex-wrap: wrap;
+    }
+    .feat {
+        display: flex; align-items: center; gap: 14px;
+        flex: 1; min-width: 200px; padding: 8px 16px;
+    }
+    .feat-icon { font-size: 28px; flex-shrink: 0; }
+    .feat-title {
+        font-size: 14px; font-weight: 700; color: #1C1C1E; margin-bottom: 2px;
+    }
+    .feat-desc { font-size: 12px; color: #8E8E93; line-height: 1.4; }
+    .feat-divider {
+        width: 1px; height: 40px; background: #E5E5EA;
+        flex-shrink: 0; margin: 0 8px;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────── */
+    @@media (max-width: 768px) {
+        .hero { flex-direction: column; padding: 40px 0 48px; }
+        .hero-visual { width: 280px; height: 280px; }
+        .hero-headline { font-size: 36px; }
+        .feat-divider { display: none; }
+        .feat { padding: 12px 8px; }
+    }
+</style>

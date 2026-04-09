@@ -1,0 +1,20 @@
+@model int
+@{
+    ViewBag.Title = "Payment Cancelled";
+}
+
+<div class="text-center p-4">
+    <h2 class="text-warning">
+        <span class="bi bi-x-circle-fill"></span> Payment Cancelled
+    </h2>
+    <p class="lead">Your payment was cancelled and you have not been charged.</p>
+    <p class="text-muted">Order reference: <strong>#@Model</strong></p>
+    <hr />
+    <p>Would you like to try again?</p>
+    <a class="btn btn-primary btn-lg me-2" asp-controller="Order" asp-action="Checkout">
+        Try Again
+    </a>
+    <a class="btn btn-outline-secondary btn-lg" asp-controller="Home" asp-action="Index">
+        Continue Shopping
+    </a>
+</div>

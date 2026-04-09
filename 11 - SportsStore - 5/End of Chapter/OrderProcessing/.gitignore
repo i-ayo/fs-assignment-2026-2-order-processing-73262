@@ -1,0 +1,55 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+publish/
+
+## Build outputs
+artifacts/
+_build/
+
+## Logs (created at runtime by Serilog)
+logs/
+*.log
+
+## NuGet
+*.nupkg
+*.nuspec
+packages/
+.nuget/
+
+## ASP.NET / EF Core — never commit local overrides or secrets
+appsettings.Development.json
+appsettings.Local.json
+**/appsettings.Local.json
+**/appsettings.Development.json
+*.pfx
+*.snk
+
+## .NET User Secrets store (managed by 'dotnet user-secrets')
+# These live in %APPDATA%\Microsoft\UserSecrets on Windows and
+# ~/.microsoft/usersecrets on Linux/macOS — never inside the repo.
+secrets.json
+
+## Rider / JetBrains
+.idea/
+*.sln.DotSettings.user
+
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+## Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml

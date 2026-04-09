@@ -1,0 +1,2 @@
+- [Project context](project_context.md) — Distributed order processing system for academic assignment, student Dora #73262
+- [User preferences](user_preferences.md) — Apple UI theme preference, master branch (not main)

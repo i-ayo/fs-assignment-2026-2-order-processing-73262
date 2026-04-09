@@ -1,0 +1,192 @@
+name: CI / CD — SportsStore
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Triggers
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+# Cancel any in-progress run on the same branch so pushes don't queue up
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  SOLUTION: "OrderProcessing.sln"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Jobs
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── 1. BUILD & TEST ──────────────────────────────────────────────────────────
+  build-and-test:
+    name: Build & Test (.NET ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]          # add windows-latest here if needed
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Restore NuGet packages once; cached by the action
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      # ── Build (all projects in the solution) ─────────────────────────────────
+      - name: Build (Release)
+        run: |
+          dotnet build ${{ env.SOLUTION }} \
+            --configuration Release \
+            --no-restore \
+            --verbosity minimal
+
+      # ── Run tests ────────────────────────────────────────────────────────────
+      # Tests use InMemory EF Core and Moq — no external services needed.
+      # The RabbitMQ password is injected as an env-var so the factory helper
+      # does not throw during test startup (tests mock the publisher anyway).
+      - name: Run tests
+        env:
+          RabbitMQ__Password: ${{ secrets.RABBITMQ_PASSWORD }}
+        run: |
+          dotnet test tests/OrderManagement.Tests/OrderManagement.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            --logger "trx;LogFileName=test-results.trx" \
+            --results-directory TestResults \
+            --collect:"XPlat Code Coverage"
+
+      # Upload test results so they appear in the GitHub Actions UI
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: TestResults/
+
+      # Upload coverage report
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: "**/coverage.cobertura.xml"
+
+  # ── 2. PUBLISH ARTIFACTS ─────────────────────────────────────────────────────
+  # Only runs on pushes to master/main (not on PRs)
+  publish:
+    name: Publish artifacts
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      # Publish each deployable service to its own folder
+      - name: Publish OrderManagement.API
+        run: |
+          dotnet publish src/OrderManagement.API/OrderManagement.API.csproj \
+            --configuration Release \
+            --no-restore \
+            --output publish/OrderManagement.API
+
+      - name: Publish InventoryService
+        run: |
+          dotnet publish src/InventoryService/InventoryService.csproj \
+            --configuration Release \
+            --no-restore \
+            --output publish/InventoryService
+
+      - name: Publish PaymentService
+        run: |
+          dotnet publish src/PaymentService/PaymentService.csproj \
+            --configuration Release \
+            --no-restore \
+            --output publish/PaymentService
+
+      - name: Publish ShippingService
+        run: |
+          dotnet publish src/ShippingService/ShippingService.csproj \
+            --configuration Release \
+            --no-restore \
+            --output publish/ShippingService
+
+      - name: Publish CustomerPortal
+        run: |
+          dotnet publish src/CustomerPortal/CustomerPortal.csproj \
+            --configuration Release \
+            --no-restore \
+            --output publish/CustomerPortal
+
+      - name: Publish AdminDashboard
+        run: |
+          dotnet publish src/AdminDashboard/AdminDashboard.csproj \
+            --configuration Release \
+            --no-restore \
+            --output publish/AdminDashboard
+
+      # Upload all published artefacts as a single zip for download/deployment
+      - name: Upload published artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sportsstore-publish-${{ github.sha }}
+          path: publish/
+          retention-days: 30
+
+  # ── 3. DEPLOY (optional — uncomment and configure for your target) ────────────
+  # deploy:
+  #   name: Deploy to Azure / VPS
+  #   runs-on: ubuntu-latest
+  #   needs: publish
+  #   environment: production
+  #   if: github.ref == 'refs/heads/master'
+  #
+  #   steps:
+  #     - name: Download published artefacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: sportsstore-publish-${{ github.sha }}
+  #         path: publish/
+  #
+  #     # ── Azure Web App example ─────────────────────────────────────────────
+  #     # 1. Create an Azure Web App for each service
+  #     # 2. Add AZURE_WEBAPP_PUBLISH_PROFILE_API secret to this repo
+  #     # 3. Uncomment the steps below
+  #     #
+  #     # - name: Deploy OrderManagement.API to Azure
+  #     #   uses: azure/webapps-deploy@v3
+  #     #   with:
+  #     #     app-name: sportsstore-api          # your Azure App Service name
+  #     #     publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
+  #     #     package: publish/OrderManagement.API
+  #
+  #     # ── SSH / VPS example ─────────────────────────────────────────────────
+  #     # - name: SCP to server
+  #     #   uses: appleboy/scp-action@v0.1.7
+  #     #   with:
+  #     #     host:     ${{ secrets.DEPLOY_HOST }}
+  #     #     username: ${{ secrets.DEPLOY_USER }}
+  #     #     key:      ${{ secrets.DEPLOY_SSH_KEY }}
+  #     #     source:   "publish/"
+  #     #     target:   "/var/www/sportsstore"

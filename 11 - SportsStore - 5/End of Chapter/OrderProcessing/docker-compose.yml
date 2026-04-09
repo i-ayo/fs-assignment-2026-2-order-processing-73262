@@ -1,0 +1,95 @@
+version: '3.9'
+
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "MyDatabaseSecret123"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P MyDatabaseSecret123 -Q 'SELECT 1'"]
+      interval: 10s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      retries: 10
+
+  ordermanagement-api:
+    build:
+      context: .
+      dockerfile: src/OrderManagement.API/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__OrdersDb: "Server=sqlserver;Database=OrderProcessing;User=sa;Password=MyDatabaseSecret123;TrustServerCertificate=True"
+      RabbitMQ__Host: rabbitmq
+    ports:
+      - "5050:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: src/InventoryService/Dockerfile
+    environment:
+      RabbitMQ__Host: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: src/PaymentService/Dockerfile
+    environment:
+      RabbitMQ__Host: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  shipping-service:
+    build:
+      context: .
+      dockerfile: src/ShippingService/Dockerfile
+    environment:
+      RabbitMQ__Host: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  customer-portal:
+    build:
+      context: .
+      dockerfile: src/CustomerPortal/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      OrderApi__BaseUrl: "http://ordermanagement-api:8080/"
+    ports:
+      - "5100:8080"
+    depends_on:
+      - ordermanagement-api
+
+  admin-dashboard:
+    build:
+      context: .
+      dockerfile: src/AdminDashboard/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      OrderApi__BaseUrl: "http://ordermanagement-api:8080/"
+    ports:
+      - "5200:8080"
+    depends_on:
+      - ordermanagement-api

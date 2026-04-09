@@ -1,0 +1,348 @@
+@page "/checkout"
+@inject CartService Cart
+@inject OrderApiService Api
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject ILogger<Checkout> Logger
+
+<div style="max-width:900px;margin:0 auto;">
+
+<h1 style="font-size:28px;font-weight:700;letter-spacing:-.02em;margin-bottom:24px;">Checkout</h1>
+
+@if (!Cart.Items.Any())
+{
+    <div class="empty-state">
+        <div class="empty-icon">🛒</div>
+        <div class="empty-title">Your cart is empty</div>
+        <p class="empty-msg">Add some products before checking out.</p>
+        <a href="/shop" class="btn btn-primary">Go Shopping</a>
+    </div>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="ap-banner ap-banner-danger" style="margin-bottom:20px;">
+            @_error
+            <button class="ap-banner-close" @onclick="() => _error = null">✕</button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_idMismatchWarning))
+    {
+        <div class="ap-banner ap-banner-warning" style="margin-bottom:20px;">
+            ⚠️ @_idMismatchWarning
+        </div>
+    }
+
+    <div class="checkout-grid">
+        <!-- Delivery Details -->
+        <div class="card">
+            <div class="card-header">Delivery Details</div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label class="form-label">Customer ID</label>
+                    <input class="form-control" @bind="_customerId"
+                           @bind:event="oninput"
+                           @onblur="OnCustomerIdBlur"
+                           maxlength="7"
+                           placeholder="e.g. CUST001"
+                           style="@(_custIdFormatError is not null ? "border-color:#C0392B;" : "")" />
+                    @if (_custIdFormatError is not null)
+                    {
+                        <div style="font-size:12px;color:#C0392B;margin-top:4px;">@_custIdFormatError</div>
+                    }
+                    else
+                    {
+                        <div class="form-hint">
+                            Known IDs: CUST001–CUST005 — your name auto-fills and is locked. Address can be changed.
+                        </div>
+                    }
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        Full Name
+                        @if (_nameIsLocked)
+                        {
+                            <span style="margin-left:6px;font-size:11px;color:#6366f1;font-weight:600;">🔒 locked to @_customerId</span>
+                        }
+                    </label>
+                    <input class="form-control"
+                           value="@_fullName"
+                           readonly="@_nameIsLocked"
+                           style="@(_nameIsLocked ? "background:#F2F2F7;cursor:not-allowed;" : "")"
+                           @oninput="@(e => { if (!_nameIsLocked) _fullName = e.Value?.ToString() ?? string.Empty; })" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Shipping Address <span style="font-size:11px;color:#8E8E93;font-weight:400;">(editable)</span></label>
+                    <textarea class="form-control"
+                              @bind="_address"
+                              @bind:event="oninput"
+                              rows="3"
+                              placeholder="Enter your shipping address…"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Summary -->
+        <div class="card">
+            <div class="card-header">Order Summary</div>
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th style="text-align:center;">Qty</th>
+                        <th style="text-align:right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var i in Cart.Items)
+                    {
+                        <tr>
+                            <td>@i.ProductName</td>
+                            <td style="text-align:center;">@i.Quantity</td>
+                            <td style="text-align:right;">@i.LineTotal.ToString("C")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="summary-total">
+                        <td colspan="2" style="text-align:right;">Order Total:</td>
+                        <td style="text-align:right;">@Cart.TotalPrice.ToString("C")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    @if (_inventoryWarnings.Any())
+    {
+        <div class="ap-banner ap-banner-danger" style="margin-top:20px;">
+            <div>
+                <strong>Stock issue:</strong>
+                <ul style="margin:8px 0 0;padding-left:20px;">
+                    @foreach (var w in _inventoryWarnings)
+                    {
+                        <li>@w</li>
+                    }
+                </ul>
+                <a href="/cart" class="btn btn-secondary" style="margin-top:10px;display:inline-block;">Adjust Cart</a>
+            </div>
+        </div>
+    }
+
+    <div style="margin-top:28px;">
+        <button class="btn btn-primary btn-lg"
+                disabled="@(_placing || _inventoryWarnings.Any() || !string.IsNullOrEmpty(_idMismatchWarning) || _custIdFormatError is not null)"
+                @onclick="PlaceOrderAsync">
+            @(_placing ? "Placing order…" : "Place Order")
+        </button>
+    </div>
+}
+
+</div>
+
+<style>
+    .checkout-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    }
+    @@media (max-width: 700px) { .checkout-grid { grid-template-columns: 1fr; } }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; color: #3A3A3C; margin-bottom: 6px; }
+    .form-hint  { font-size: 12px; color: #8E8E93; margin-top: 4px; }
+    .summary-table { width: 100%; border-collapse: collapse; }
+    .summary-table th {
+        padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: .04em; color: #8E8E93; border-bottom: 1px solid #E5E5EA;
+    }
+    .summary-table td { padding: 10px 16px; font-size: 14px; border-bottom: 1px solid #F2F2F7; }
+    .summary-total td { border-top: 2px solid #E5E5EA; border-bottom: none; font-weight: 700; }
+    .ap-banner {
+        padding: 14px 20px; border-radius: 12px; font-size: 14px;
+        display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    .ap-banner-danger  { background: #FFF1F0; color: #C0392B; }
+    .ap-banner-warning { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
+    .ap-banner-close   { background: none; border: none; cursor: pointer; font-size: 16px; color: inherit; }
+    .btn-lg { padding: 14px 32px; font-size: 16px; }
+</style>
+
+@code {
+    // ── Known-customer lookup (mirrors the seed data in OrderDbContext) ───────
+    // When a recognised Customer ID is typed, the name and address auto-fill.
+    // If the user overrides those fields with different values they get a warning
+    // and the Place Order button is disabled until the data matches.
+    private static readonly System.Text.RegularExpressions.Regex CustIdRegex =
+        new(@"^CUST\d{3}$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly Dictionary<string, (string Name, string Address)> KnownCustomers =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["CUST001"] = ("Alice Martin",  "1 Main St, Dublin, D01 AB12"),
+            ["CUST002"] = ("Bob Smith",     "2 River Rd, Cork, T12 CD34"),
+            ["CUST003"] = ("Carol White",   "3 Lake Ave, Galway, H91 EF56"),
+            ["CUST004"] = ("Dan Jones",     "4 Hill St, Limerick, V94 GH78"),
+            ["CUST005"] = ("Eve Brown",     "5 Oak Rd, Waterford, X91 IJ90"),
+        };
+
+    private string  _customerId          = string.Empty;
+    private string  _fullName            = string.Empty;
+    private string  _address             = string.Empty;
+    private bool    _placing;
+    private bool    _nameIsLocked;       // true when the CustID maps to a known customer
+    private string? _error;
+    private string? _idMismatchWarning;
+    private string? _custIdFormatError;
+    private List<string> _inventoryWarnings = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckInventoryAsync();
+
+        // Restore the Customer ID the user used last time
+        try
+        {
+            var saved = await JS.InvokeAsync<string?>("localStorage.getItem", "sportsstore_customer_id");
+            if (!string.IsNullOrWhiteSpace(saved))
+            {
+                _customerId = saved.Trim().ToUpperInvariant();
+                _custIdFormatError = CustIdRegex.IsMatch(_customerId)
+                    ? null
+                    : "Format must be CUST followed by 3 digits, e.g. CUST001";
+                if (_custIdFormatError is null)
+                    AutoFillKnownCustomer();
+            }
+        }
+        catch { /* JS interop unavailable during prerender */ }
+    }
+
+    // Called when the Customer ID field loses focus
+    private void OnCustomerIdBlur()
+    {
+        _customerId = _customerId.Trim().ToUpperInvariant();
+
+        if (!string.IsNullOrWhiteSpace(_customerId) && !CustIdRegex.IsMatch(_customerId))
+        {
+            _custIdFormatError = "Format must be CUST followed by 3 digits, e.g. CUST001";
+            _nameIsLocked      = false;
+            _idMismatchWarning = null;
+            return;
+        }
+
+        _custIdFormatError = null;
+        AutoFillKnownCustomer();
+        ValidateCredentials();
+    }
+
+    // Auto-fills name (and default address if blank) when a known Customer ID is recognised.
+    // Name is ALWAYS locked to the known value — the customer cannot change it.
+    // Address is freely editable: any address is valid, multiple customers can share one.
+    private void AutoFillKnownCustomer()
+    {
+        var id = _customerId.Trim().ToUpperInvariant();
+        if (!KnownCustomers.TryGetValue(id, out var info))
+        {
+            // Unknown but validly-formatted ID — unlock the name so the user can type their own
+            _nameIsLocked      = false;
+            _idMismatchWarning = null;
+            return;
+        }
+
+        // Known customer: always set the canonical name and lock it
+        _fullName          = info.Name;
+        _nameIsLocked      = true;
+
+        // Pre-fill address only if the field is empty (user may have typed a different one)
+        if (string.IsNullOrWhiteSpace(_address))
+            _address = info.Address;
+
+        _idMismatchWarning = null;
+    }
+
+    // Validates that the name still matches the locked value (address is not validated).
+    private void ValidateCredentials()
+    {
+        var id = _customerId.Trim();
+        if (string.IsNullOrWhiteSpace(id)) { _idMismatchWarning = null; return; }
+
+        if (!KnownCustomers.TryGetValue(id, out var known))
+        {
+            _idMismatchWarning = null;   // brand-new customer ID — any name/address allowed
+            return;
+        }
+
+        // Only the name is locked; address can differ freely
+        var nameOk = string.Equals(_fullName.Trim(), known.Name, StringComparison.OrdinalIgnoreCase);
+        _idMismatchWarning = nameOk
+            ? null
+            : $"The name for {id} must be \"{known.Name}\" and cannot be changed.";
+    }
+
+    private async Task CheckInventoryAsync()
+    {
+        var items = Cart.Items.Select(i => (i.ProductId, i.ProductName, i.Quantity));
+        var result = await Api.CheckInventoryAsync(items);
+        _inventoryWarnings = result.Failures.Select(f =>
+            $"{f.ProductName} – only {f.Available} available, you requested {f.Requested}. Please adjust your cart."
+        ).ToList();
+    }
+
+    private async Task PlaceOrderAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_customerId) ||
+            string.IsNullOrWhiteSpace(_fullName) ||
+            string.IsNullOrWhiteSpace(_address))
+        {
+            _error = "Please fill in all delivery details.";
+            return;
+        }
+
+        ValidateCredentials();
+        if (!string.IsNullOrEmpty(_idMismatchWarning)) return;
+
+        await CheckInventoryAsync();
+        if (_inventoryWarnings.Any()) return;
+
+        _placing = true;
+        _error   = null;
+
+        try
+        {
+            Logger.LogInformation(
+                "Placing order for customer {CustomerId} ({CustomerName}), {LineCount} line(s)",
+                _customerId, _fullName, Cart.Items.Count);
+
+            var request = new SubmitOrderRequest(
+                _customerId.Trim(),
+                _fullName.Trim(),
+                _address.Trim(),
+                Cart.Items.Select(i => new OrderLineRequest(
+                    i.ProductId, i.ProductName, i.Quantity, i.UnitPrice)).ToList());
+
+            var order = await Api.SubmitOrderAsync(request);
+            Cart.Clear();
+
+            Logger.LogInformation(
+                "Order {OrderId} placed successfully for customer {CustomerId}",
+                order?.Id, _customerId);
+
+            try
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem",
+                    "sportsstore_customer_id", _customerId.Trim());
+            }
+            catch { /* JS interop unavailable during prerender — silently skip */ }
+
+            Nav.NavigateTo($"/order-confirmation/{order?.Id}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Order placement failed for customer {CustomerId}", _customerId);
+            _error = $"Order failed: {ex.Message}";
+        }
+        finally
+        {
+            _placing = false;
+        }
+    }
+}

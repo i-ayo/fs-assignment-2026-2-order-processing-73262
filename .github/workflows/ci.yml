@@ -1,0 +1,77 @@
+name: SportsStore CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  # ── Job 1: Original monolithic SportsStore (book exercises) ──────────────
+  sportsstore:
+    name: SportsStore (MVC)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln"
+
+      - name: Build solution
+        run: dotnet build "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln" --no-restore --configuration Release
+
+      - name: Run tests
+        # Pipeline fails automatically if any test fails (dotnet test exits non-zero)
+        run: dotnet test "11 - SportsStore - 5/End of Chapter/SportsSln/SportsSln.sln" --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=sportsstore-results.trx"
+
+      - name: Upload SportsStore test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sportsstore-test-results
+          path: "**/*.trx"
+
+  # ── Job 2: Distributed Order Processing System ────────────────────────────
+  order-processing:
+    name: Order Processing (Distributed)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln"
+
+      - name: Build solution
+        run: dotnet build "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln" --no-restore --configuration Release
+
+      - name: Run tests
+        # Pipeline fails automatically if any test fails (dotnet test exits non-zero)
+        run: >
+          dotnet test
+          "11 - SportsStore - 5/End of Chapter/OrderProcessing/OrderProcessing.sln"
+          --no-build --configuration Release --verbosity normal
+          --logger "trx;LogFileName=orderprocessing-results.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Upload Order Processing test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: orderprocessing-test-results
+          path: |
+            **/*orderprocessing-results.trx
+            **/coverage.cobertura.xml

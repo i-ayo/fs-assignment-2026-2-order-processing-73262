@@ -1,0 +1,368 @@
+@page "/my-orders"
+@inject OrderApiService Api
+@inject IJSRuntime JS
+@inject ILogger<MyOrders> Logger
+
+<div style="max-width:1000px;margin:0 auto;">
+
+<h1 style="font-size:28px;font-weight:700;letter-spacing:-.02em;margin-bottom:24px;">My Orders</h1>
+
+@* ── Customer ID lookup ──────────────────────────────────────────────────────
+   The Customer ID used at checkout is stored in localStorage so the user does
+   not have to re-type it every visit. It is also shown on OrderConfirmation. *@
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-body">
+        <p style="color:#8E8E93;font-size:14px;margin-bottom:12px;">
+            Enter the <strong>Customer ID</strong> you used at checkout.
+            It is displayed on your order confirmation page and remembered here for your convenience.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;">
+            <div>
+                <input class="form-control" placeholder="e.g. CUST001"
+                       value="@_customerId"
+                       @oninput="OnCustomerIdInput"
+                       maxlength="7"
+                       style="max-width:320px;@(_custIdFormatError is not null ? "border-color:#C0392B;" : "")" />
+                @if (_custIdFormatError is not null)
+                {
+                    <div style="font-size:12px;color:#C0392B;margin-top:4px;">@_custIdFormatError</div>
+                }
+            </div>
+            <button class="btn btn-primary" @onclick="LoadOrdersAsync"
+                    disabled="@(string.IsNullOrWhiteSpace(_customerId) || _custIdFormatError is not null)">Load Orders</button>
+            @if (_orders is not null)
+            {
+                <button class="btn btn-secondary" @onclick="ClearOrders">Clear</button>
+            }
+        </div>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-state">Loading…</div>
+}
+else if (!string.IsNullOrEmpty(_error))
+{
+    <div class="ap-banner ap-banner-danger">@_error</div>
+}
+else if (_orders is not null)
+{
+    @* ── Status filter pills ─────────────────────────────────────────────── *@
+    <div class="filter-pills" style="margin-bottom:20px;">
+        @foreach (var f in Filters)
+        {
+            <button class="filter-pill @(_activeFilter == f ? "filter-pill-active" : "")"
+                    @onclick="() => SetFilter(f)">@f</button>
+        }
+    </div>
+
+    @if (!FilteredOrders.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">No orders found</div>
+            <p class="empty-msg">
+                @(_activeFilter == "All"
+                    ? $"No orders exist for customer \"{_customerId}\". Make sure you use the same Customer ID as at checkout."
+                    : $"No \"{_activeFilter}\" orders for this customer.")
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <table class="ap-table">
+                <thead>
+                    <tr>
+                        <th></th><!-- expand -->
+                        <th>Order ID</th>
+                        <th class="sortable" @onclick='() => Sort("Date")'>
+                            Date @SortIcon("Date")
+                        </th>
+                        <th class="sortable" @onclick='() => Sort("Total")'>
+                            Total @SortIcon("Total")
+                        </th>
+                        <th class="sortable" @onclick='() => Sort("Status")'>
+                            Status @SortIcon("Status")
+                        </th>
+                        <th>Payment Ref</th>
+                        <th>Tracking</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in FilteredOrders)
+                    {
+                        var isExpanded = _expandedOrderId == o.Id;
+                        <tr style="cursor:pointer;" @onclick="() => ToggleExpand(o.Id)">
+                            <td style="font-size:11px;color:#8E8E93;padding:0 8px;">
+                                @(isExpanded ? "▾" : "▸")
+                            </td>
+                            <td style="font-family:'SF Mono',monospace;font-size:12px;color:#8E8E93;">@o.Id.ToString()[..8]…</td>
+                            <td>@o.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td>
+                            <td style="font-weight:700;">@o.TotalAmount.ToString("C")</td>
+                            <td>
+                                <span class="status-badge @StatusBadge(o.Status)">@o.Status</span>
+                            </td>
+                            <td style="font-family:'SF Mono',monospace;font-size:12px;">@(o.PaymentTransactionId ?? "—")</td>
+                            <td style="font-family:'SF Mono',monospace;font-size:12px;">@(o.TrackingNumber ?? "—")</td>
+                        </tr>
+                        @if (isExpanded)
+                        {
+                            <tr>
+                                <td colspan="7" style="padding:0;">
+                                    <div style="padding:14px 20px 18px;background:#FAFAFA;border-top:1px solid #E5E5EA;border-bottom:2px solid rgba(0,122,255,.12);">
+                                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8E8E93;margin-bottom:8px;">Order Lines</div>
+                                        @if (o.Lines.Any())
+                                        {
+                                            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="padding:5px 10px;text-align:left;color:#8E8E93;font-size:11px;border-bottom:1px solid #E5E5EA;">Product</th>
+                                                        <th style="padding:5px 10px;text-align:center;color:#8E8E93;font-size:11px;border-bottom:1px solid #E5E5EA;">Qty</th>
+                                                        <th style="padding:5px 10px;text-align:right;color:#8E8E93;font-size:11px;border-bottom:1px solid #E5E5EA;">Price</th>
+                                                        <th style="padding:5px 10px;text-align:right;color:#8E8E93;font-size:11px;border-bottom:1px solid #E5E5EA;">Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var l in o.Lines)
+                                                    {
+                                                        <tr>
+                                                            <td style="padding:7px 10px;">@l.ProductName</td>
+                                                            <td style="padding:7px 10px;text-align:center;">@l.Quantity</td>
+                                                            <td style="padding:7px 10px;text-align:right;">@l.UnitPrice.ToString("C")</td>
+                                                            <td style="padding:7px 10px;text-align:right;font-weight:600;">@l.LineTotal.ToString("C")</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        }
+                                        <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:13px;color:#3A3A3C;">
+                                            <span><strong>Ship to:</strong> @o.ShippingAddress</span>
+                                            @if (!string.IsNullOrEmpty(o.TrackingNumber))
+                                            {
+                                                <span><strong>Tracking:</strong>
+                                                    <code style="background:#F2F2F7;padding:2px 6px;border-radius:4px;font-size:12px;">@o.TrackingNumber</code>
+                                                </span>
+                                            }
+                                            @if (!string.IsNullOrEmpty(o.PaymentTransactionId))
+                                            {
+                                                <span><strong>Payment ref:</strong>
+                                                    <code style="background:#F2F2F7;padding:2px 6px;border-radius:4px;font-size:12px;">@o.PaymentTransactionId</code>
+                                                </span>
+                                            }
+                                            @if (!string.IsNullOrEmpty(o.FailureReason))
+                                            {
+                                                <span style="color:#C0392B;"><strong>Reason:</strong> @o.FailureReason</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+</div>
+
+<style>
+    .filter-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-pill {
+        padding: 7px 18px; border-radius: 20px; border: 1.5px solid #D1D1D6;
+        background: #fff; font-size: 14px; font-weight: 500; color: #3A3A3C;
+        cursor: pointer; transition: all .15s;
+    }
+    .filter-pill:hover { border-color: #007AFF; color: #007AFF; }
+    .filter-pill-active { background: #007AFF; border-color: #007AFF; color: #fff; }
+    .ap-table { width: 100%; border-collapse: collapse; }
+    .ap-table th {
+        padding: 12px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: .04em; color: #8E8E93; border-bottom: 1px solid #E5E5EA;
+        white-space: nowrap;
+    }
+    .ap-table th.sortable { cursor: pointer; user-select: none; }
+    .ap-table th.sortable:hover { color: #007AFF; }
+    .ap-table td { padding: 13px 16px; font-size: 14px; border-bottom: 1px solid #F2F2F7; }
+    .ap-table tbody tr:last-child td { border-bottom: none; }
+    .ap-table tbody tr:hover { background: #F9F9FB; }
+    .ap-banner { padding: 14px 20px; border-radius: 12px; font-size: 14px; margin-bottom: 16px; }
+    .ap-banner-danger { background: #FFF1F0; color: #C0392B; }
+</style>
+
+@code {
+    private const string StorageKey = "sportsstore_customer_id";
+    // Regex: exactly CUST followed by 3 digits (CUST001–CUST999)
+    private static readonly System.Text.RegularExpressions.Regex CustIdRegex =
+        new(@"^CUST\d{3}$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private string?              _customerId;
+    private string?              _custIdFormatError;
+    private List<OrderResponse>? _orders;
+    private bool                 _loading;
+    private string?              _error;
+    private string               _activeFilter = "All";
+    private string               _sortField    = "Date";
+    private bool                 _sortAsc      = false;
+    private Guid?                _expandedOrderId;
+
+    private static readonly string[] Filters = ["All", "Completed", "Failed", "In Progress"];
+
+    // AfterRender is needed for localStorage (JS interop requires a rendered circuit)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            var saved = await JS.InvokeAsync<string?>("localStorage.getItem", StorageKey);
+            if (!string.IsNullOrWhiteSpace(saved))
+            {
+                _customerId = saved.Trim().ToUpperInvariant();
+                // Validate format before auto-loading
+                _custIdFormatError = CustIdRegex.IsMatch(_customerId)
+                    ? null
+                    : "Format must be CUST followed by 3 digits, e.g. CUST001";
+
+                // Show the restored ID in the input immediately
+                StateHasChanged();
+
+                if (_custIdFormatError is null)
+                {
+                    await LoadOrdersAsync();
+                    // OnAfterRenderAsync does NOT trigger an automatic re-render after
+                    // it completes — call StateHasChanged() explicitly so the orders
+                    // table (or error banner) actually appears after the API responds.
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch
+        {
+            // localStorage not available (e.g. prerendering) — silently ignore
+        }
+    }
+
+    // Fired on every keystroke in the Customer ID input.
+    // Clears the orders table as soon as the field is emptied so stale data
+    // from a previous lookup is never shown under a blank or different ID.
+    private void OnCustomerIdInput(ChangeEventArgs e)
+    {
+        _customerId = (e.Value?.ToString() ?? string.Empty).ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(_customerId))
+        {
+            _orders            = null;
+            _error             = null;
+            _expandedOrderId   = null;
+            _custIdFormatError = null;
+        }
+        else
+        {
+            _custIdFormatError = CustIdRegex.IsMatch(_customerId)
+                ? null
+                : "Format must be CUST followed by 3 digits, e.g. CUST001";
+        }
+    }
+
+    // Explicit clear — resets lookup and removes saved ID from localStorage.
+    private async Task ClearOrders()
+    {
+        _customerId      = string.Empty;
+        _orders          = null;
+        _error           = null;
+        _expandedOrderId = null;
+        try { await JS.InvokeVoidAsync("localStorage.removeItem", StorageKey); }
+        catch { /* JS unavailable */ }
+    }
+
+    private async Task LoadOrdersAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_customerId)) return;
+        _loading         = true;
+        _error           = null;
+        _orders          = null;
+        _expandedOrderId = null;
+        // Force re-render NOW so the "Loading…" spinner appears before the await
+        StateHasChanged();
+
+        // Persist the Customer ID for next visit
+        try { await JS.InvokeVoidAsync("localStorage.setItem", StorageKey, _customerId.Trim()); }
+        catch { /* prerendering / JS unavailable */ }
+
+        try
+        {
+            Logger.LogInformation("Loading orders for customer {CustomerId}", _customerId);
+            _orders = await Api.GetOrdersByCustomerAsync(_customerId.Trim());
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load orders for {CustomerId}", _customerId);
+            _error = $"Could not load orders: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void SetFilter(string f) => _activeFilter = f;
+
+    private void ToggleExpand(Guid id)
+        => _expandedOrderId = (_expandedOrderId == id) ? null : id;
+
+    private void Sort(string field)
+    {
+        if (_sortField == field) _sortAsc = !_sortAsc;
+        else { _sortField = field; _sortAsc = true; }
+    }
+
+    private string SortIcon(string field)
+        => _sortField != field ? " ⇅" : _sortAsc ? " ↑" : " ↓";
+
+    private List<OrderResponse> FilteredOrders
+    {
+        get
+        {
+            if (_orders is null) return [];
+            var filtered = FilterOrders(_orders, _activeFilter);
+            return _sortField switch
+            {
+                "Date"   => _sortAsc ? filtered.OrderBy(o => o.CreatedAt).ToList()
+                                     : filtered.OrderByDescending(o => o.CreatedAt).ToList(),
+                "Total"  => _sortAsc ? filtered.OrderBy(o => o.TotalAmount).ToList()
+                                     : filtered.OrderByDescending(o => o.TotalAmount).ToList(),
+                "Status" => _sortAsc ? filtered.OrderBy(o => o.Status.ToString()).ToList()
+                                     : filtered.OrderByDescending(o => o.Status.ToString()).ToList(),
+                _        => filtered
+            };
+        }
+    }
+
+    private static List<OrderResponse> FilterOrders(
+        List<OrderResponse> orders, string filter) => filter switch
+    {
+        "Completed"   => orders.Where(o => o.Status == Shared.Domain.Enums.OrderStatus.Completed).ToList(),
+        "Failed"      => orders.Where(o => o.Status is
+                            Shared.Domain.Enums.OrderStatus.Failed or
+                            Shared.Domain.Enums.OrderStatus.PaymentFailed or
+                            Shared.Domain.Enums.OrderStatus.InventoryFailed).ToList(),
+        "In Progress" => orders.Where(o => o.Status is not
+                            Shared.Domain.Enums.OrderStatus.Completed and not
+                            Shared.Domain.Enums.OrderStatus.Failed and not
+                            Shared.Domain.Enums.OrderStatus.PaymentFailed and not
+                            Shared.Domain.Enums.OrderStatus.InventoryFailed).ToList(),
+        _             => orders
+    };
+
+    private static string StatusBadge(Shared.Domain.Enums.OrderStatus s) => s switch
+    {
+        Shared.Domain.Enums.OrderStatus.Submitted        => "badge-submitted",
+        Shared.Domain.Enums.OrderStatus.Completed        => "badge-completed",
+        Shared.Domain.Enums.OrderStatus.Failed or
+        Shared.Domain.Enums.OrderStatus.PaymentFailed or
+        Shared.Domain.Enums.OrderStatus.InventoryFailed  => "badge-failed",
+        _                                                  => "badge-progress"
+    };
+}
