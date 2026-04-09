@@ -2,7 +2,9 @@
 # CI — Build, Test & Coverage
 # Runs on every push to master and every pull request targeting master.
 # Pipeline FAILS immediately if any test fails (dotnet test exits non-zero).
-# On push to master the HTML coverage report is published to GitHub Pages.
+#
+# Coverage report is generated and uploaded as a downloadable artifact on
+# every run. GitHub Pages deployment is a separate optional workflow.
 # ─────────────────────────────────────────────────────────────────────────────
 name: CI — Build, Test & Coverage
 
@@ -127,33 +129,3 @@ jobs:
         with:
           name: coverage-report
           path: coveragereport
-
-      - name: Upload Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          name: github-pages
-          path: coveragereport
-
-  # ── Job 3: Deploy coverage report to GitHub Pages (master only) ──────────
-  deploy-coverage:
-    name: Deploy Coverage → GitHub Pages
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    needs: orderprocessing-build-test
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-        with:
-          artifact_name: github-pages

@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Optional: Deploy coverage report to GitHub Pages
+#
+# REQUIRES: GitHub Pages must be enabled in repo Settings → Pages →
+# Source: "GitHub Actions" before this workflow will succeed.
+#
+# To enable: go to https://github.com/i-ayo/fs-assignment-2026-2-order-processing-73262/settings/pages
+# Set Source to "GitHub Actions" and save.
+# ─────────────────────────────────────────────────────────────────────────────
+name: Pages — Deploy Coverage Report
+
+on:
+  workflow_run:
+    workflows: ["CI — Build, Test & Coverage"]
+    branches: [ "master" ]
+    types: [ completed ]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-coverage:
+    name: Deploy Coverage → GitHub Pages
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download coverage artifact from CI run
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coveragereport
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: github-pages
+          path: coveragereport
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
